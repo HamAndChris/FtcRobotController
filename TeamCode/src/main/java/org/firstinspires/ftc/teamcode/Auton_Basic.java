@@ -33,11 +33,13 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+import org.firstinspires.ftc.teamcode.AprilSensing;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -63,6 +65,7 @@ public class Auton_Basic extends LinearOpMode {
     DcMotor         backRightDrive   = null;
     DcMotor         intakeMotor1;
     DcMotor         intakeMotor2;
+    DcMotor         winchMotor;
     AnalogInput     laserAnalog1, laserAnalog2;
     DistanceSensor  distanceRight, distanceLeft;
     DigitalChannel  magnetSensor;
@@ -167,7 +170,7 @@ public class Auton_Basic extends LinearOpMode {
         double forward = Calibration.AUTON_STRAFE_SPEED * Math.sin(distanceSensing.WallAngle_Rads);
         // Apply distance control loop:
         forward += (Calibration.AUTON_STRAFE_DIST - distanceSensing.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
-        drivePower(forward, right, rotate);
+        drive(forward, right, rotate);
     }
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
@@ -310,10 +313,10 @@ public class Auton_Basic extends LinearOpMode {
             //newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
             //newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
             //newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(frontLeftInches * COUNTS_PER_INCH);
-            newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(backLeftInches * COUNTS_PER_INCH);
-            newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(frontRightInches * COUNTS_PER_INCH);
-            newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(backRightInches * COUNTS_PER_INCH);
+            newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(frontLeftInches * Calibration.COUNTS_PER_INCH);
+            newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(backLeftInches * Calibration.COUNTS_PER_INCH);
+            newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(frontRightInches * Calibration.COUNTS_PER_INCH);
+            newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(backRightInches * Calibration.COUNTS_PER_INCH);
             frontLeftDrive.setTargetPosition(newFrontLeftTarget);
             frontRightDrive.setTargetPosition(newFrontRightTarget);
             backLeftDrive.setTargetPosition(newBackLeftTarget);

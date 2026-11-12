@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
 import java.util.List;
 
 import org.firstinspires.ftc.teamcode.Calibration;
@@ -81,7 +83,7 @@ public class AprilSensing {
                     Forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
                             * -Calibration.APRIL_DIST_GAIN_P;
                     Right = 0;
-                    telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
+                    telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", Rotate, Forward));
                     Detected = true;
 
                     // Apply threshold to determine if we are on target enough to fire:

@@ -34,6 +34,7 @@ public final class Calibration {
 
     // Autonomous behavior calibrations:
     public static final double AUTON_STRAFE_SPEED = 0.3;
+    public static final double AUTON_ROTATE_SPEED = 0.3;
     public static final double AUTON_STRAFE_DIST  = 22 * 25.4; // Distance from center of robot to wall when strafing in autonomous
     public static final double AUTON_STEP_1_DIST  = 18 * 25.4; // How far to come off wall before beginning to look for APRIL tags
 

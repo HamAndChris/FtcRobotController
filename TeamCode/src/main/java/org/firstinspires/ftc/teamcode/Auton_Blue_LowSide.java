@@ -87,9 +87,9 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
                 && runtime.seconds() - started < 3) {
             distanceSensing.processSensors();
-            drivePower(0.3, 0, 0);
+            drive(0.3, 0, 0);
         }
-        drivePower(0, 0, 0);
+        drive(0, 0, 0);
 
         // step 2 line up to April Tag while winding winch, waiting up to 23 seconds for it to tip our way
         while(opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
@@ -114,7 +114,7 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         }
 
         // Step 5: Stop
-        drivePower(0, 0, 0);
+        drive(0, 0, 0);
 
         telemetry.addData("Autonomy", "Complete");
         telemetry.update();

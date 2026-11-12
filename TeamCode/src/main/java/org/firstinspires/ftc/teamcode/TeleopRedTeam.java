@@ -37,8 +37,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 
-import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+import org.firstinspires.ftc.teamcode.AprilSensing;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -78,6 +79,7 @@ public class TeleopRedTeam extends OpMode {
     AnalogInput laserAnalog1, laserAnalog2;
     DistanceSensor distanceRight, distanceLeft;
     DigitalChannel magnetSensor;
+    Servo ledIndicator = null;
     IMU imu;
 
     // Helper files:
