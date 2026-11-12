@@ -38,6 +38,8 @@ import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
 
+import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -65,9 +67,7 @@ import java.util.List;
 @TeleOp(name = "Teleop Red Team", group = "Robot")
 //@Disabled
 public class TeleopRedTeam extends OpMode {
-    private AprilTagProcessor aprilTag;
-    private VisionPortal visionPortal;
-    // This declares the four motors needed
+    // Hardware objects declared here:
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
     DcMotor backLeftDrive;
@@ -75,42 +75,44 @@ public class TeleopRedTeam extends OpMode {
     DcMotor winchMotor;
     DcMotor intakeMotor1;
     DcMotor intakeMotor2;
-    private AnalogInput laserAnalog1, laserAnalog2;
-    private DistanceSensor distanceRight, distanceLeft;
-    private DistanceSensing distanceSensing;
+    AnalogInput laserAnalog1, laserAnalog2;
+    DistanceSensor distanceRight, distanceLeft;
+    DigitalChannel magnetSensor;
+    IMU imu;
 
-    private DigitalChannel magnetSensor;
-    // Sensor scale: 3.3V corresponds to 1000 mm
-    private static final double MAX_VOLTS = 3.3;
-    private static final double MAX_DISTANCE_MM = 1000.0;
-    private static final int DISTANCE_FILTER_SIZE = 2;
-    private double[][] distanceSamples = new double[4][DISTANCE_FILTER_SIZE];
+    // Helper files:
+    private DistanceSensing   distanceSensing;
+    private AprilTagProcessor aprilTag;
+    private VisionPortal      visionPortal;
+    private AprilSensing      aprilSensing;
 
-    private static final double IDEAL_SHOOT_DISTANCE_MM = 300;
-
+    // Constants:
     private static final double POWER_LEVEL = 0.9; // 1.0 = full speed
 
-    private static final boolean USE_ENCODERS = true;
-
+    // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
     private CatapultState catapultState;
     private int winchLaunchStart;
+
+    // PID variables:
     private double angle_integrator = 0;
 
+    // Other variables:
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
 
+    // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
         return "RED";
     }
 
-    // This declares the IMU needed to get the current direction the robot is facing
-    IMU imu;
     private void setIntakeMotors(double speed){
         intakeMotor1.setPower(speed);
         intakeMotor2.setPower(speed);
     }
+
     @Override
     public void init() {
+        // Map hardware objects:
         intakeMotor1 = hardwareMap.get(DcMotor.class, "IntakeMotor");
         intakeMotor2 = hardwareMap.get(DcMotor.class, "IntakeMotor2");
         winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
@@ -126,6 +128,7 @@ public class TeleopRedTeam extends OpMode {
         distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
         distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
 
+        imu = hardwareMap.get(IMU.class, "imu");
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -134,33 +137,18 @@ public class TeleopRedTeam extends OpMode {
         winchMotor.setDirection(DcMotor.Direction.REVERSE);
         intakeMotor2.setDirection(DcMotor.Direction.REVERSE);
 
-
-        if( USE_ENCODERS ) {
-            frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        }
-
-        // TODO: Figure out how to properly initialize this taking into account the 30-degree mounting angle
-
-        imu = hardwareMap.get(IMU.class, "imu");
-        // This needs to be changed to match the orientation on your robot
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
-
-        RevHubOrientationOnRobot orientationOnRobot = new
-                RevHubOrientationOnRobot(logoDirection, usbDirection);
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
+        // Enable encoder velocity drive mode:
+        frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Initialize the distance sensing algorithm:
         distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
         // Initialize the April tag camera:
-        initAprilTag();
+        aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
     }
 
     @Override
@@ -177,42 +165,61 @@ public class TeleopRedTeam extends OpMode {
         // Read angle sensors:
         distanceSensing.processSensors();
 
-        // Get chassis stick inputs:
+        // Get chassis stick inputs, applying parabolic transform:
         double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * POWER_LEVEL;
         double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
         double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
 
-        // If you press the left bumper, you get a drive NOT from the point of view of the robot
-        // (much unlike driving an RC vehicle)
-        // Scratch that.
-        // Left bumper is now APRIL tag alignment
+        // Left bumper is now APRIL tag AUTO AIMBOT MODE
         if (gamepad1.left_bumper) {
-            //driveFieldRelative(forward, right, rotate);
-
             // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
             AlineToAprilTag( !gamepad1.right_bumper );
             angle_integrator = 0;
-        } else if (gamepad1.right_bumper) {
-            // AUTO_AIMBOT MODE
+        } 
+        else if (gamepad1.right_bumper) {
+            // Wall following mode
             angle_integrator += distanceSensing.WallAngle_Deg;
-            double rotatePID = (distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
+            rotate = (distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
                     + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
 
             double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distanceSensing.WallDist_mm)
                     * Calibration.LASER_DIST_GAIN_P;
-            forward = Math.max(Math.min(forward, 0.5), -0.5); // Limit forward to half power
+            forward = Math.max(Math.min(forwardPID, 0.5), -0.5); // Limit forward PID to half power
+            
+            // Correct forward/right ratio to keep moving straight along wall:
+            forward += right * Math.sin(distanceSensing.WallAngle_Rads);
+            right *= Math.cos(distanceSensing.WallAngle_Rads);
 
-            drive(forwardPID, right, rotatePID);
-            telemetry.addData("Forward PID", "%.2f", forward);
+            drive(forward, right, rotate);
+            telemetry.addData("Forward PID", "%.2f", forwardPID);
             telemetry.addData("Rotate PID", "%.2f", rotate);
-        } else {
-            // Apply parabolic transform!
+        } 
+        else {
+            // Just apply game stick inputs
             drive(forward, right, rotate);
             angle_integrator = 0;
         }
 
         /* ************* Winch State Machine *********** */
 
+        doWinchStatemachine();
+
+        /* ************* Intake Motor Logic *********** */
+
+        if( operatorGamepad.a ){
+            setIntakeMotors(1.0);
+        }
+        else if( operatorGamepad.left_stick_button ){
+            setIntakeMotors(-1);
+        }
+        else {
+            setIntakeMotors(0);
+        }
+
+        telemetry.update();
+    }
+
+    private void doWinchStatemachine() {
         // Idle state:
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
@@ -270,86 +277,87 @@ public class TeleopRedTeam extends OpMode {
         else {
             catapultState = CatapultState.IDLE;
         }
-
-        /* ************* Intake Motor Logic *********** */
-
-
-        if( operatorGamepad.a ){
-            setIntakeMotors(1.0);
-        }
-        else if( operatorGamepad.left_stick_button ){
-            setIntakeMotors(-1);
-        }
-        else {
-            setIntakeMotors(0);
-        }
-
-        telemetry.update();
-
     }
-    private void initAprilTag() {
 
-        // Create the AprilTag processor the easy way.
-        aprilTag = AprilTagProcessor.easyCreateWithDefaults();
+    // private void initAprilTag() {
 
-        // Create the vision portal the easy way.
-        //visionPortal = VisionPortal.easyCreateWithDefaults(
-        //    hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTag);
-        VisionPortal.Builder builder = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
-                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .addProcessor(aprilTag);
-        visionPortal = builder.build();
+    //     // Create the AprilTag processor the easy way.
+    //     aprilTag = AprilTagProcessor.easyCreateWithDefaults();
+
+    //     // Create the vision portal the easy way.
+    //     //visionPortal = VisionPortal.easyCreateWithDefaults(
+    //     //    hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTag);
+    //     VisionPortal.Builder builder = new VisionPortal.Builder()
+    //             .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+    //             .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
+    //             .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+    //             .addProcessor(aprilTag);
+    //     visionPortal = builder.build();
 
 
-    }   // end method initAprilTag()
-
-    private void AlineToAprilTag(boolean display_only) {
-
-        List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-        telemetry.addData("# AprilTags Detected", currentDetections.size());
-        boolean found = false;
-
-        // Step through the list of detections and display info for each one.
-        for (AprilTagDetection detection : currentDetections) {
-            if (detection instanceof AprilTagClusterDetection) {
-                AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
-                String name = clusterDet.metadata.name;
-                telemetry.addLine(String.format("\n==== Tag Cluster (%s)", name));
-                telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
-                telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-                telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-
-                if( name.contains(teamColor()) ){
-                    double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
-                            * Calibration.APRIL_YAW_GAIN_P;
-                    double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
-                            * -Calibration.APRIL_DIST_GAIN_P;
-                    telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
-                    if (!display_only) {
-                        drive(forward, 0, rotate);
-                    } else {
-                        drive(0, 0, 0);
-                    }
-                    found = true;
-                }
-            }
-        }   // end for() loop
-
-        // Set zero power if no april tags found:
-        if( !found || display_only){
-            drive(0, 0, 0);
+    // }   // end method initAprilTag()
+    
+    // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
+    void AlineToAprilTag(boolean display_only) {
+        aprilSensing.performSensing();
+        if( !display_only ){
+            drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate);
         }
 
-        // Add "key" information to telemetry
-        telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
-        telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
-        telemetry.addLine("RBE = Range, Bearing & Elevation");
-
-        telemetry.update();
+        // Turn on LED:
+        if( aprilSensing.OnTarget ){
+            ledIndicator.setPosition(Calibration.LED_READY_TO_FIRE);
+        }
+        else if( aprilSensing.Detected ){
+            ledIndicator.setPosition(Calibration.LED_AIMING);
+        }
     }
+
+    // private void AlineToAprilTag(boolean display_only) {
+
+    //     List<AprilTagDetection> currentDetections = aprilTag.getDetections();
+    //     telemetry.addData("# AprilTags Detected", currentDetections.size());
+    //     boolean found = false;
+
+    //     // Step through the list of detections and display info for each one.
+    //     for (AprilTagDetection detection : currentDetections) {
+    //         if (detection instanceof AprilTagClusterDetection) {
+    //             AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
+    //             String name = clusterDet.metadata.name;
+    //             telemetry.addLine(String.format("\n==== Tag Cluster (%s)", name));
+    //             telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
+    //             telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
+    //             telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
+    //             telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
+
+    //             if( name.contains(teamColor()) ){
+    //                 double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
+    //                         * Calibration.APRIL_YAW_GAIN_P;
+    //                 double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
+    //                         * -Calibration.APRIL_DIST_GAIN_P;
+    //                 telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
+    //                 if (!display_only) {
+    //                     drive(forward, 0, rotate);
+    //                 } else {
+    //                     drive(0, 0, 0);
+    //                 }
+    //                 found = true;
+    //             }
+    //         }
+    //     }   // end for() loop
+
+    //     // Set zero power if no april tags found:
+    //     if( !found || display_only){
+    //         drive(0, 0, 0);
+    //     }
+
+    //     // Add "key" information to telemetry
+    //     telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
+    //     telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
+    //     telemetry.addLine("RBE = Range, Bearing & Elevation");
+
+    //     telemetry.update();
+    // }
 
     /**
      * Checks if a gamepad is connected based on its ID.

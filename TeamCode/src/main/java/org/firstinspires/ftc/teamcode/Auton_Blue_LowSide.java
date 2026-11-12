@@ -72,306 +72,52 @@ import java.util.List;
  */
 
 @Autonomous(name="Blue: Low Side", group="Robot")
-public class Auton_Blue_LowSide extends LinearOpMode {
-    private AprilTagProcessor aprilTag;
-
-    /**
-     * The variable to store our instance of the vision portal.
-     */
-    private VisionPortal visionPortal;
-    /* Declare OpMode members. */
-    private DcMotor         frontLeftDrive   = null;
-    private DcMotor         frontRightDrive   = null;
-    private DcMotor         backLeftDrive   = null;
-    private DcMotor         backRightDrive   = null;
-    private AnalogInput laserAnalog1, laserAnalog2;
-    private DistanceSensor distanceRight, distanceLeft;
-    private DistanceSensing distanceSensing;
-
-    private final ElapsedTime     runtime = new ElapsedTime();
-
-    // Calculate the COUNTS_PER_INCH for your specific drive train.
-    // Go to your motor vendor website to determine your motor's COUNTS_PER_MOTOR_REV
-    // For external drive gearing, set DRIVE_GEAR_REDUCTION as needed.
-    // For example, use a value of 2.0 for a 12-tooth spur gear driving a 24-tooth spur gear.
-    // This is gearing DOWN for less speed and more torque.
-    // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
-    static final double     WHEEL_DIAMETER_INCHES   = 4.094;     // For figuring circumference
-    static final double     COUNTS_PER_OUTPUT_REV  = 537.7; // From datasheet
-    static final double     COUNTS_PER_INCH         = (COUNTS_PER_OUTPUT_REV) /
-                                                       (WHEEL_DIAMETER_INCHES * 3.1415);
-
+public class Auton_Blue_LowSide extends Auton_Basic {
+    @Override
     public String teamColor() {
         return "BLUE";
     }
 
-    // This declares the IMU needed to get the current direction the robot is facing
-    IMU imu;
-
+    // Function that performs the desired autonomous tasks.
     @Override
-    public void runOpMode() {
-
-        frontLeftDrive = hardwareMap.get(DcMotor.class, "FrontLeft");
-        frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
-        backLeftDrive = hardwareMap.get(DcMotor.class, "BackLeft");
-        backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");
-        laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
-        laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
-        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
-        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
-
-        // We set the left motors in reverse which is needed for drive trains where the left
-        // motors are opposite to the right ones.
-        backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-
-        frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-
-        frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        // Initialize the distance sensing algorithm:
-        distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
-                distanceLeft, distanceRight, imu, telemetry);
-
-        // Send telemetry message to indicate successful Encoder reset
-        telemetry.addData("Starting at",  "%7d :%7d",
-                frontLeftDrive.getCurrentPosition(),
-                frontRightDrive.getCurrentPosition());
-        telemetry.update();
-
-        initAprilTag();
-
-        // Wait for the game to start (driver presses START)
-        waitForStart();
-
+    public void doAuton() 
+    {
         // Step 1 move forward a few inches
         double started = runtime.seconds();
-        while(opModeIsActive() && distanceSensing.WallDist_mm < 12*25.4
+        while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
                 && runtime.seconds() - started < 3) {
             distanceSensing.processSensors();
             drivePower(0.3, 0, 0);
         }
         drivePower(0, 0, 0);
 
-        // step 2 line up to April Tag
-        started = runtime.seconds();
-        while(opModeIsActive() && runtime.seconds() - started < 5) {
-            AlineToAprilTag();
+        // step 2 line up to April Tag while winding winch, waiting up to 23 seconds for it to tip our way
+        while(opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
+            doWinchStatemachine(false, false);
             distanceSensing.processSensors();
+            AlineToAprilTag();
         }
 
-        // Step 3: Fire winch
+        // Step 3: Fire winch (timeout 2 seconds)
+        started = runtime.seconds();
+        while(opModeIsActive() && runtime.seconds() - started < 2 && catapultState != CatapultState.WINDING ) {
+            doWinchStatemachine(true, false);
+            distanceSensing.processSensors();
+            AlineToAprilTag();
+        }
 
-        // Step 4: Strafe back to home position
+        // Step 4: Strafe back to loading zone, while still winding winch
         while( opModeIsActive() && distanceSensing.RightDist_mm > 100 ){
             distanceSensing.processSensors();
-            // Apply rotation control loop:
-            double rotate = distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
-            // Correct forward/right ratio to keep moving straight along wall:
-            double right = 0.3 * Math.cos(distanceSensing.WallAngle_Rads);
-            double forward = Math.sin(distanceSensing.WallAngle_Rads);
-            // Apply distance control loop:
-            forward += (22*25.4 - distanceSensing.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
-            drivePower(forward, right, rotate);
+            doWinchStatemachine(false, false);
+            strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
         }
 
         // Step 5: Stop
         drivePower(0, 0, 0);
 
-
-        telemetry.addData("Path", "Complete");
+        telemetry.addData("Autonomy", "Complete");
         telemetry.update();
         sleep(1000);  // pause to display final telemetry message.
-    }
-    private void initAprilTag() {
-
-        // Create the AprilTag processor the easy way.
-        aprilTag = AprilTagProcessor.easyCreateWithDefaults();
-
-        // Create the vision portal the easy way.
-        //visionPortal = VisionPortal.easyCreateWithDefaults(
-        //    hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTag);
-        VisionPortal.Builder builder = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
-                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .addProcessor(aprilTag);
-        visionPortal = builder.build();
-
-
-    }   // end method initAprilTag()
-    public void drivePower(double forward, double right, double rotate) {
-
-        double maxPower = 1;
-        double maxSpeed = 1;  // make this slower for outreaches
-
-        // This calculates the power needed for each wheel based on the amount of forward,
-        // strafe right, and rotate
-        double frontLeftPower = forward + right + rotate;
-        double frontRightPower = forward - right - rotate;
-        double backRightPower = forward + right - rotate;
-        double backLeftPower = forward - right + rotate;
-
-
-        // This is needed to make sure we don't pass > 1.0 to any wheel
-        // It allows us to keep all of the motors in proportion to what they should
-        // be and not get clipped
-        maxPower = Math.max(maxPower, Math.abs(frontLeftPower));
-        maxPower = Math.max(maxPower, Math.abs(frontRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backRightPower));
-        maxPower = Math.max(maxPower, Math.abs(backLeftPower));
-
-        // We multiply by maxSpeed so that it can be set lower for outreaches
-        // When a young child is driving the robot, we may not want to allow full
-        // speed.
-        frontLeftDrive.setPower(maxSpeed * (frontLeftPower / maxPower));
-        frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
-        backLeftDrive.setPower(maxSpeed * (backLeftPower / maxPower));
-        backRightDrive.setPower(maxSpeed * (backRightPower / maxPower));
-    }
-
-
-    private void AlineToAprilTag() {
-        boolean display_only = false;
-        List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-        telemetry.addData("# AprilTags Detected", currentDetections.size());
-        boolean found = false;
-
-        // Step through the list of detections and display info for each one.
-        for (AprilTagDetection detection : currentDetections) {
-            if (detection instanceof AprilTagClusterDetection) {
-                AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
-                String name = clusterDet.metadata.name;
-                telemetry.addLine(String.format("\n==== Tag Cluster (%s)", name));
-                telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
-                telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-                telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-
-                //if( name.contains("SCORING") && name.contains(TEAM_COLOR) ){
-                if( name.contains("AUDIENCE") && name.contains(teamColor()) ){
-                    double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
-                            * Calibration.APRIL_YAW_GAIN_P;
-                    double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
-                            * -Calibration.APRIL_DIST_GAIN_P;
-                    telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
-                    if (!display_only) {
-                        drivePower(forward, 0, rotate);
-                    } else {
-                        drivePower(0, 0, 0);
-                    }
-                    found = true;
-                }
-            }
-        }   // end for() loop
-
-        // Set zero power if no april tags found:
-        if( !found || display_only){
-            drivePower(0, 0, 0);
-        }
-
-        // Add "key" information to telemetry
-        telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
-        telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
-        telemetry.addLine("RBE = Range, Bearing & Elevation");
-
-        telemetry.update();
-    }   // end method telemetryAprilTag()
-
-
-    /*
-     *  Method to perform a relative move, based on encoder counts.
-     *  Encoders are not reset as the move is based on the current position.
-     *  Move will stop if any of three conditions occur:
-     *  1) Move gets to the desired position
-     *  2) Move runs out of time
-     *  3) Driver stops the OpMode running.
-     */
-    public void encoderDrive(double speed,
-                             //double leftInches, double rightInches,
-                             double timeoutS, double forward, double right, double rotate) {
-        int newFrontLeftTarget;
-        int newFrontRightTarget;
-        int newBackLeftTarget;
-        int newBackRightTarget;
-
-        // Ensure that the OpMode is still active
-        if (opModeIsActive()) {
-
-            // This calculates the power needed for each wheel based on the amount of forward,
-            // strafe right, and rotate
-            double frontLeftInches = forward + right + rotate;
-            double frontRightInches = forward - right - rotate;
-            double backRightInches = forward + right - rotate;
-            double backLeftInches = forward - right + rotate;
-
-            // Determine new target position, and pass to motor controller
-            //newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
-            //newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
-            //newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            //newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(frontLeftInches * COUNTS_PER_INCH);
-            newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(backLeftInches * COUNTS_PER_INCH);
-            newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(frontRightInches * COUNTS_PER_INCH);
-            newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(backRightInches * COUNTS_PER_INCH);
-            frontLeftDrive.setTargetPosition(newFrontLeftTarget);
-            frontRightDrive.setTargetPosition(newFrontRightTarget);
-            backLeftDrive.setTargetPosition(newBackLeftTarget);
-            backRightDrive.setTargetPosition(newBackRightTarget);
-
-            // Turn On RUN_TO_POSITION
-            frontLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            frontRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            backLeftDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            backRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-
-            // reset the timeout time and start motion.
-            runtime.reset();
-            frontLeftDrive.setPower(Math.abs(speed));
-            frontRightDrive.setPower(Math.abs(speed));
-            backLeftDrive.setPower(Math.abs(speed));
-            backRightDrive.setPower(Math.abs(speed));
-
-
-            // keep looping while we are still active, and there is time left, and both motors are running.
-            // Note: We use (isBusy() && isBusy()) in the loop test, which means that when EITHER motor hits
-            // its target position, the motion will stop.  This is "safer" in the event that the robot will
-            // always end the motion as soon as possible.
-            // However, if you require that BOTH motors have finished their moves before the robot continues
-            // onto the next step, use (isBusy() || isBusy()) in the loop test.
-            while (opModeIsActive() &&
-                   (runtime.seconds() < timeoutS) &&
-                   (frontLeftDrive.isBusy() || frontRightDrive.isBusy() ||
-                           backLeftDrive.isBusy() || backRightDrive.isBusy()       )) {
-
-                // Display it for the driver.
-                telemetry.addData("Running to",  " %7d :%7d", newFrontLeftTarget, newFrontRightTarget);
-                telemetry.addData("Currently at",  " at %7d :%7d",
-                                            frontLeftDrive.getCurrentPosition(), frontRightDrive.getCurrentPosition());
-                telemetry.update();
-            }
-            // Allow settling time for encoder position
-            sleep(250);
-
-            // Stop all motion;
-            frontLeftDrive.setPower(0);
-            frontRightDrive.setPower(0);
-            backLeftDrive.setPower(0);
-            backRightDrive.setPower(0);
-
-            // Turn off RUN_TO_POSITION
-            frontLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-            //sleep(250);   // optional pause after each move.
-        }
     }
 }

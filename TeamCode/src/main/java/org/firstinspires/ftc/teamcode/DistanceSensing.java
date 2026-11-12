@@ -37,6 +37,20 @@ public class DistanceSensing {
         distanceRight = distRight;
         imu = theImu;
         telemetry = theTelemetry;
+
+        // Initialize the IMU:
+        // This needs to be changed to match the orientation on your robot
+
+        // TODO: Figure out how to properly initialize the IMU angle taking into account the 30-degree mounting
+        
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
+                RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD;
+        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
+                RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
+
+        RevHubOrientationOnRobot orientationOnRobot = new
+                RevHubOrientationOnRobot(logoDirection, usbDirection);
+        imu.initialize(new IMU.Parameters(orientationOnRobot));
     }
 
     public void processSensors()
