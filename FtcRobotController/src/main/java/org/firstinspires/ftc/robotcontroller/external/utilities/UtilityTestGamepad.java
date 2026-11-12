@@ -48,7 +48,7 @@ public class UtilityTestGamepad extends OpMode {
     @Override
     public void loop() {
         display_gamepad(gamepad1, "Gamepad 1");
-        display_gamepad(gamepad2, "Gamepad 2");
+        display_gamepad(gamepad1, "Gamepad 2");
     }
 
     void display_gamepad(Gamepad gamepad, String name) {

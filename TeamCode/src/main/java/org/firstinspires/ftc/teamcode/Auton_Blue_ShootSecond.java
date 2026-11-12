@@ -31,18 +31,17 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.hardware.camera.BuiltinCameraDirection;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
 import java.util.List;
 
@@ -72,8 +71,8 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@Autonomous(name="Robot: Auto Drive By Encoder", group="Robot")
-public class Auton_Shoot_N_Scoot extends LinearOpMode {
+@Autonomous(name="Blue: Shoot Second", group="Robot")
+public class Auton_Blue_ShootSecond extends LinearOpMode {
     private AprilTagProcessor aprilTag;
 
     /**
@@ -85,7 +84,9 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
     private DcMotor         frontRightDrive   = null;
     private DcMotor         backLeftDrive   = null;
     private DcMotor         backRightDrive   = null;
-    private DistanceSensor distance1, distance2, distance3;
+    private AnalogInput laserAnalog1, laserAnalog2;
+    private DistanceSensor distanceRight, distanceLeft;
+    private DistanceSensing distanceSensing;
 
     private final ElapsedTime     runtime = new ElapsedTime();
 
@@ -105,7 +106,10 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
                                                        (WHEEL_DIAMETER_INCHES * 3.1415);
     static final double     DRIVE_SPEED             = 0.6;
     static final double     TURN_SPEED              = 0.5;
-    private static final double LASER_DISTANCE_WIDTH_MM = 9 * 25.4; // TODO: Measure more precisely
+    public static final String TEAM_COLOR = "BLUE";
+
+    // This declares the IMU needed to get the current direction the robot is facing
+    IMU imu;
 
     @Override
     public void runOpMode() {
@@ -114,16 +118,15 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
         frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
         backLeftDrive = hardwareMap.get(DcMotor.class, "BackLeft");
         backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");
-        distance1 = hardwareMap.get(DistanceSensor.class, "Distance1");
-        distance2 = hardwareMap.get(DistanceSensor.class, "Distance2");
-        distance3 = hardwareMap.get(DistanceSensor.class, "Distance3");
+        laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
+        laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
+        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
+        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        //frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -135,43 +138,54 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        // Initialize the distance sensing algorithm:
+        distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
+                distanceLeft, distanceRight, imu, telemetry);
+
         // Send telemetry message to indicate successful Encoder reset
         telemetry.addData("Starting at",  "%7d :%7d",
                 frontLeftDrive.getCurrentPosition(),
                 frontRightDrive.getCurrentPosition());
         telemetry.update();
+
         initAprilTag();
+
         // Wait for the game to start (driver presses START)
         waitForStart();
 
         // Step 1 move forward a few inches
-        encoderDrive(DRIVE_SPEED,  3,  12, 0, 0);  // S1: Forward 47 Inches with 5 Sec timeout
-
-        // step 2 line up to April Tag
-        while(opModeIsActive() && runtime.seconds() < 5) {
-            AlineToAprilTag();
+        double started = runtime.seconds();
+        while(opModeIsActive() && distanceSensing.WallDist_mm < 12*25.4
+                && runtime.seconds() - started < 3) {
+            distanceSensing.processSensors();
+            drivePower(0.3, 0, 0);
         }
-
-        // Step 3: Strafe back to home position
-        double distance_mm3 = distance3.getDistance(DistanceUnit.MM);
-        while(opModeIsActive() && distance_mm3 > 100){
-            double distance_mm1 = distance1.getDistance(DistanceUnit.MM);
-                   distance_mm3 = distance3.getDistance(DistanceUnit.MM);
-            double distance_mm2 = distance2.getDistance(DistanceUnit.MM);
-            // Calculate angle based on TRIGONOMETRY!!!
-            double wall_angle_rads = Math.atan((distance_mm2-distance_mm1) / LASER_DISTANCE_WIDTH_MM);
-            double wall_angle_degs = wall_angle_rads * 180 / 3.1415926535897932384626433;
-            double wall_dist = (distance_mm1 + distance_mm2)/2;
-            // Apply control loop:
-            double rotate = wall_angle_degs * -1/100;
-            double forward = (12*25.4 - wall_dist) * 1/1000;
-            drivePower(forward, 0.3, rotate);
-
-        }
-
-        // Step 4: Stop
         drivePower(0, 0, 0);
 
+        // step 2 line up to April Tag
+        started = runtime.seconds();
+        while(opModeIsActive() && runtime.seconds() - started < 5) {
+            AlineToAprilTag();
+            distanceSensing.processSensors();
+        }
+
+        // Step 3: Fire winch
+
+        // Step 4: Strafe back to home position
+        while( opModeIsActive() && distanceSensing.LeftDist_mm > 100 ){
+            distanceSensing.processSensors();
+            // Apply rotation control loop:
+            double rotate = distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
+            // Correct forward/right ratio to keep moving straight along wall:
+            double right = 0.3 * Math.cos(distanceSensing.WallAngle_Rads);
+            double forward = Math.sin(distanceSensing.WallAngle_Rads);
+            // Apply distance control loop:
+            forward += (22*25.4 - distanceSensing.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
+            drivePower(forward, right, rotate);
+        }
+
+        // Step 5: Stop
+        drivePower(0, 0, 0);
 
 
         telemetry.addData("Path", "Complete");
@@ -227,7 +241,7 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
 
 
     private void AlineToAprilTag() {
-
+        boolean display_only = false;
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         telemetry.addData("# AprilTags Detected", currentDetections.size());
         boolean found = false;
@@ -236,24 +250,32 @@ public class Auton_Shoot_N_Scoot extends LinearOpMode {
         for (AprilTagDetection detection : currentDetections) {
             if (detection instanceof AprilTagClusterDetection) {
                 AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
-                telemetry.addLine(String.format("\n==== Tag Cluster (%s)", clusterDet.metadata.name));
+                String name = clusterDet.metadata.name;
+                telemetry.addLine(String.format("\n==== Tag Cluster (%s)", name));
                 telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
                 telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
                 telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
                 telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
 
-                double rotate=detection.ftcPose.yaw*1/10;
-                double forward=(43- detection.ftcPose.range)*1/10;
-                telemetry.addLine(String.format("rotate: %3.2f, fprward: %3.2f", rotate, forward));
-
-                //drivePower(forward, 0, rotate);
-                drivePower(0, 0, 0); // DEBUGGING
-                found = true;
+                //if( name.contains("SCORING") && name.contains(TEAM_COLOR) ){
+                if( name.contains("AUDIENCE") && name.contains(TEAM_COLOR) ){
+                    double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
+                            * Calibration.APRIL_YAW_GAIN_P;
+                    double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
+                            * -Calibration.APRIL_DIST_GAIN_P;
+                    telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
+                    if (!display_only) {
+                        drivePower(forward, 0, rotate);
+                    } else {
+                        drivePower(0, 0, 0);
+                    }
+                    found = true;
+                }
             }
         }   // end for() loop
 
         // Set zero power if no april tags found:
-        if( !found){
+        if( !found || display_only){
             drivePower(0, 0, 0);
         }
 

@@ -371,7 +371,7 @@ public class FtcRobotControllerActivity extends Activity
     textOpMode = (TextView) findViewById(R.id.textOpMode);
     textErrorMessage = (TextView) findViewById(R.id.textErrorMessage);
     textGamepad[0] = (TextView) findViewById(R.id.textGamepad1);
-    textGamepad[1] = (TextView) findViewById(R.id.textGamepad2);
+    textGamepad[1] = (TextView) findViewById(R.id.textgamepad1);
     immersion = new ImmersiveMode(getWindow().getDecorView());
     dimmer = new Dimmer(this);
     dimmer.longBright();

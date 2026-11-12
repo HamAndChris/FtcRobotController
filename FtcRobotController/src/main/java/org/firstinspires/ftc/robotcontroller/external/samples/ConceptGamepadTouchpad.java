@@ -11,7 +11,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
  * The Sony PS4 gamepad can detect two distinct touches on the central touchpad.
  * Other gamepads with different touchpads may provide mixed results.
  *
- * The touchpads are accessed through the standard gamepad1 and gamepad2 objects.
+ * The touchpads are accessed through the standard gamepad1 and gamepad1 objects.
  *   Several new members were added to the Gamepad class in FTC SDK Rev 7
  *
  *   .touchpad_finger_1     returns true if at least one finger is detected.

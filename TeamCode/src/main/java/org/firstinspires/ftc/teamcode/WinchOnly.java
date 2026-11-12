@@ -48,7 +48,7 @@ import com.qualcomm.robotcore.hardware.IMU;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  *
  */
-@TeleOp(name = "Robot: Winch motor only`", group = "Robot")
+@TeleOp(name = "Winch motor only`", group = "Robot")
 //@Disabled
 public class WinchOnly extends OpMode {
     // This declares the four motors needed

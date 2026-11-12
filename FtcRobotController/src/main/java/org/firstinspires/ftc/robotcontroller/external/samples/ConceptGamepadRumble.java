@@ -17,7 +17,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  *
  *   Moral:  You should use this sample to experiment with your specific gamepads to explore their rumble features.
  *
- * The rumble motors are accessed through the standard gamepad1 and gamepad2 objects.
+ * The rumble motors are accessed through the standard gamepad1 and gamepad1 objects.
  *   Several new methods were added to the Gamepad class in FTC SDK Rev 7
  *   The key methods are as follows:
  *
