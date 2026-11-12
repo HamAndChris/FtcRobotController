@@ -71,8 +71,8 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@Autonomous(name="Blue: Shoot Second", group="Robot")
-public class Auton_Blue_ShootSecond extends LinearOpMode {
+@Autonomous(name="Blue: Low Side", group="Robot")
+public class Auton_Blue_LowSide extends LinearOpMode {
     private AprilTagProcessor aprilTag;
 
     /**
@@ -96,17 +96,14 @@ public class Auton_Blue_ShootSecond extends LinearOpMode {
     // For example, use a value of 2.0 for a 12-tooth spur gear driving a 24-tooth spur gear.
     // This is gearing DOWN for less speed and more torque.
     // For gearing UP, use a gear ratio less than 1.0. Note this will affect the direction of wheel rotation.
-    static final double     COUNTS_PER_MOTOR_REV    = 4000 ;    // eg: TETRIX Motor Encoder
-    static final double     COUNTS_PER_OUTPUT_REV  = 537.7;
-    static final double     DRIVE_GEAR_REDUCTION    = 4.0 ;     // No External Gearing.
     static final double     WHEEL_DIAMETER_INCHES   = 4.094;     // For figuring circumference
-    //static final double     COUNTS_PER_INCH         = (COUNTS_PER_MOTOR_REV * DRIVE_GEAR_REDUCTION) /
-    //        (WHEEL_DIAMETER_INCHES * 3.1415);
+    static final double     COUNTS_PER_OUTPUT_REV  = 537.7; // From datasheet
     static final double     COUNTS_PER_INCH         = (COUNTS_PER_OUTPUT_REV) /
                                                        (WHEEL_DIAMETER_INCHES * 3.1415);
-    static final double     DRIVE_SPEED             = 0.6;
-    static final double     TURN_SPEED              = 0.5;
-    public static final String TEAM_COLOR = "BLUE";
+
+    public String teamColor() {
+        return "BLUE";
+    }
 
     // This declares the IMU needed to get the current direction the robot is facing
     IMU imu;
@@ -172,7 +169,7 @@ public class Auton_Blue_ShootSecond extends LinearOpMode {
         // Step 3: Fire winch
 
         // Step 4: Strafe back to home position
-        while( opModeIsActive() && distanceSensing.LeftDist_mm > 100 ){
+        while( opModeIsActive() && distanceSensing.RightDist_mm > 100 ){
             distanceSensing.processSensors();
             // Apply rotation control loop:
             double rotate = distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
@@ -258,7 +255,7 @@ public class Auton_Blue_ShootSecond extends LinearOpMode {
                 telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
 
                 //if( name.contains("SCORING") && name.contains(TEAM_COLOR) ){
-                if( name.contains("AUDIENCE") && name.contains(TEAM_COLOR) ){
+                if( name.contains("AUDIENCE") && name.contains(teamColor()) ){
                     double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
                             * Calibration.APRIL_YAW_GAIN_P;
                     double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)

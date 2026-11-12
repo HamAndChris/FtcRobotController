@@ -35,6 +35,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -95,7 +96,8 @@ public class TeleopRedTeam extends OpMode {
     private CatapultState catapultState;
     private int winchLaunchStart;
     private double angle_integrator = 0;
-    private boolean spitOutMode = false;
+
+    private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
 
     public String teamColor() {
         return "RED";
@@ -163,10 +165,19 @@ public class TeleopRedTeam extends OpMode {
 
     @Override
     public void loop() {
+        // Decide if we're using one gamepad or two:
+        if( isGamepadConnected(gamepad2) ){
+            telemetry.addLine("Dual Gamepad Mode");
+            operatorGamepad = gamepad2;
+        }
+        else {
+            telemetry.addLine("Single Gamepad Mode");
+            operatorGamepad = gamepad1;
+        }
         // Read angle sensors:
         distanceSensing.processSensors();
 
-        // Get stick inputs:
+        // Get chassis stick inputs:
         double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * POWER_LEVEL;
         double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
         double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
@@ -205,14 +216,14 @@ public class TeleopRedTeam extends OpMode {
         // Idle state:
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
-           if (gamepad1.b ){
+           if (operatorGamepad.b ){
                winchMotor.setPower(-0.5);
            }
            else {
                winchMotor.setPower(0);
            }
             // Check conditions
-            if( gamepad1.y ){
+            if( operatorGamepad.y ){
                 catapultState = CatapultState.WINDING;
             }
         }
@@ -225,7 +236,7 @@ public class TeleopRedTeam extends OpMode {
                 catapultState = CatapultState.DOWN;
                 winchLaunchStart = winchMotor.getCurrentPosition();
             }
-            if( gamepad1.b ){
+            if( operatorGamepad.b ){
                 catapultState = CatapultState.IDLE;
             }
         }
@@ -235,13 +246,12 @@ public class TeleopRedTeam extends OpMode {
             double winchPower = (winchMotor.getCurrentPosition()-winchLaunchStart)
                     * -Calibration.WINCH_HOLDING_GAIN_P + Calibration.WINCH_HOLDING_FEEDFORWARD;
             winchMotor.setPower(winchPower);
-            // Reset "spit out mode"
-            spitOutMode = false;
+
             // Check conditions
-            if( gamepad1.x ){
+            if( operatorGamepad.x ){
                 catapultState = CatapultState.LAUNCHING;
             }
-            if( gamepad1.b ){
+            if( operatorGamepad.b ){
                 catapultState = CatapultState.IDLE;
             }
         }
@@ -253,7 +263,7 @@ public class TeleopRedTeam extends OpMode {
             if( (winchMotor.getCurrentPosition() - winchLaunchStart) > Calibration.WINCH_LAUNCH_AMOUNT ){
                 catapultState = CatapultState.WINDING; // Go back to winding unless canceled
             }
-            if( gamepad1.b ){
+            if( operatorGamepad.b ){
                 catapultState = CatapultState.IDLE;
             }
         }
@@ -264,10 +274,10 @@ public class TeleopRedTeam extends OpMode {
         /* ************* Intake Motor Logic *********** */
 
 
-        if( gamepad1.a ){
+        if( operatorGamepad.a ){
             setIntakeMotors(1.0);
         }
-        else if( gamepad1.left_stick_button ){
+        else if( operatorGamepad.left_stick_button ){
             setIntakeMotors(-1);
         }
         else {
@@ -339,6 +349,13 @@ public class TeleopRedTeam extends OpMode {
         telemetry.addLine("RBE = Range, Bearing & Elevation");
 
         telemetry.update();
+    }
+
+    /**
+     * Checks if a gamepad is connected based on its ID.
+     */
+    private boolean isGamepadConnected(Gamepad gp) {
+        return gp != null && gp.id != Gamepad.ID_UNASSOCIATED;
     }
 
     // This routine drives the robot field relative
