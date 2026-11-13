@@ -49,6 +49,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
 
 /*
@@ -102,6 +104,7 @@ public class TeleopRedTeam extends OpMode {
     // Other variables:
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
+    Dictionary<DcMotor, Double> cachedMotorPowers = new Hashtable<>();
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -157,6 +160,12 @@ public class TeleopRedTeam extends OpMode {
     }
 
     @Override
+    public void init_loop() {
+        // Keep the winch wound when the user initialized the robot
+        doWinchStatemachine(false);
+    }
+
+    @Override
     public void loop() {
         // Decide if we're using one gamepad or two:
         if( isGamepadConnected(gamepad2) ){
@@ -207,7 +216,7 @@ public class TeleopRedTeam extends OpMode {
 
         /* ************* Winch State Machine *********** */
 
-        doWinchStatemachine();
+        doWinchStatemachine(true);
 
         /* ************* Intake Motor Logic *********** */
 
@@ -236,7 +245,7 @@ public class TeleopRedTeam extends OpMode {
         telemetry.update();
     }
 
-    private void doWinchStatemachine() {
+    private void doWinchStatemachine(boolean allowLaunch) {
         // Idle state:
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
@@ -272,7 +281,7 @@ public class TeleopRedTeam extends OpMode {
             winchMotor.setPower(winchPower);
 
             // Check conditions
-            if( operatorGamepad.x ){
+            if( operatorGamepad.x && allowLaunch ){
                 catapultState = CatapultState.LAUNCHING;
             }
             if( operatorGamepad.b ){
@@ -296,7 +305,20 @@ public class TeleopRedTeam extends OpMode {
         }
     }
 
-    
+    // Helper function to speed up loop time
+    void setPowerCached(DcMotor motor, double power){
+        // Get previous power value:
+        Double prevPower = cachedMotorPowers.get(motor);
+        if( prevPower == null ){
+            prevPower = 0.0;
+        }
+        // Only update motor power if it changed by more than 2%, or stopping:
+        if( Math.abs(power - prevPower) > 0.02 || (power == 0.0 && prevPower != 0.0) ) {
+            motor.setPower(power);
+            cachedMotorPowers.put(motor, power);
+        }
+    }
+
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag(boolean display_only) {
         aprilSensing.performSensing();
@@ -371,9 +393,9 @@ public class TeleopRedTeam extends OpMode {
         // We multiply by maxSpeed so that it can be set lower for outreaches
         // When a young child is driving the robot, we may not want to allow full
         // speed.
-        frontLeftDrive.setPower(maxSpeed * (frontLeftPower / maxPower));
-        frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
-        backLeftDrive.setPower(maxSpeed * (backLeftPower / maxPower));
-        backRightDrive.setPower(maxSpeed * (backRightPower / maxPower));
+        setPowerCached(frontLeftDrive, maxSpeed * (frontLeftPower / maxPower));
+        setPowerCached(frontRightDrive, maxSpeed * (frontRightPower / maxPower));
+        setPowerCached(backLeftDrive, maxSpeed * (backLeftPower / maxPower));
+        setPowerCached(backRightDrive, maxSpeed * (backRightPower / maxPower));
     }
 }

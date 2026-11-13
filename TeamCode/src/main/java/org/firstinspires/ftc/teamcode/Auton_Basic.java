@@ -29,6 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -39,15 +40,15 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Dictionary;
+import java.util.Hashtable;
 import java.util.List;
+
 
 /* This OpMode will be the basis for all other Autonomous OpModes.
  * 
@@ -73,6 +74,7 @@ public class Auton_Basic extends LinearOpMode {
     Servo           flowerBar = null;
     IMU             imu;
     VisionPortal    visionPortal;
+    private List<LynxModule> allHubs;
 
     // Helper files:
     AprilTagProcessor aprilTag;
@@ -86,6 +88,11 @@ public class Auton_Basic extends LinearOpMode {
 
     // Other variables:
     final ElapsedTime runtime = new ElapsedTime();
+    Dictionary<DcMotor, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
+
+    // FPS profiling:
+    private final Deque<Double> timestamps = new ArrayDeque<>();
+    private static final int FPS_SAMPLES = 3;
 
     // Default team color:
     public String teamColor() {
@@ -94,6 +101,13 @@ public class Auton_Basic extends LinearOpMode {
 
     @Override
     public void runOpMode() {
+        // 1. Retrieve all connected REV Hubs (Control Hub + Expansion Hub)
+        allHubs = hardwareMap.getAll(LynxModule.class);
+        // 2. Set every hub to MANUAL bulk caching mode
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
+        }
+
         frontLeftDrive = hardwareMap.get(DcMotor.class, "FrontLeft");
         frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
         backLeftDrive = hardwareMap.get(DcMotor.class, "BackLeft");
@@ -131,17 +145,19 @@ public class Auton_Basic extends LinearOpMode {
         distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
-        // Send telemetry message to indicate successful Encoder reset
-        telemetry.addData("Starting at",  "%7d :%7d",
-                frontLeftDrive.getCurrentPosition(),
-                frontRightDrive.getCurrentPosition());
-        telemetry.update();
-
         // Initialize the APRIL tag sensing / webcam
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
 
         // Wait for the game to start (driver presses START)
-        waitForStart();
+        //waitForStart();
+
+        // Keep the winch wound while we wait for user to press START:
+        while( opModeInInit() ){
+            beginLoop("Initialized (Winding)");
+            doWinchStatemachine(false, false);
+            telemetry.update();
+            idle();
+        }
 
         // Call the doAuton function, which will be overridden by other auton modes:
         doAuton();
@@ -151,11 +167,25 @@ public class Auton_Basic extends LinearOpMode {
     // without repeating all the setup code.
     public void doAuton()
     {
-        // Step 1 move forward three inches
+        // Step 0: Winch down before we start moving
         double started = runtime.seconds();
+        while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() - started < 5) {
+            beginLoop("Step 0 (Winding)");
+            doWinchStatemachine(false, false);
+            distanceSensing.processSensors();
+            telemetry.update();
+            idle();
+        }
+
+        // Step 1 move forward three inches
+        started = runtime.seconds();
         while( opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() - started < 3 ) {
+            beginLoop("Step 1 (Moving Forward)");
+            doWinchStatemachine(false, false);
             distanceSensing.processSensors();
             drive(0.2, 0, 0);
+            telemetry.update();
+            idle();
         }
 
         // Step 2: Stop
@@ -165,6 +195,35 @@ public class Auton_Basic extends LinearOpMode {
         telemetry.update();
         sleep(1000);  // pause to display final telemetry message.
     }
+
+    // Record a call and report telemetry the calculated calls-per-second over the last few calls.
+    // Make sure you always call this at the beginning of each loop in doAuton()
+    void beginLoop(String label) {
+        // Clear cached hardware reads to speed up I/O access:
+        for (LynxModule hub : allHubs) {
+            hub.clearBulkCache();
+        }
+
+        // Get current timestamp:
+        double now = runtime.seconds();
+        double fps = 0.0;
+        timestamps.addLast(now);
+
+        // Keep only the last maxSamples timestamps
+        if (timestamps.size() > FPS_SAMPLES) {
+            timestamps.removeFirst();
+        }
+
+        // Not enough samples yet
+        if (timestamps.size() == FPS_SAMPLES) {
+            // Calculate rate: (number of calls - 1) / time span
+            double span = timestamps.getLast() - timestamps.getFirst();
+            fps = span > 0 ? (timestamps.size() - 1) / span : 0.0;
+        }
+
+        telemetry.addData(label, "%.2f s, %.1 FPS", now, fps);
+    }
+
 
     // Apply motor torques to follow the wall at the desired strafing speed
     void strafeAlongWall(double rightSpeed)
@@ -193,8 +252,8 @@ public class Auton_Basic extends LinearOpMode {
     
     // Drive both intake motors (1.0 full intake, -1.0 full reverse)
     void setIntakeMotors(double speed){
-        intakeMotor1.setPower(speed);
-        intakeMotor2.setPower(speed);
+        setPowerCached(intakeMotor1, speed);
+        setPowerCached(intakeMotor2, speed);
     }
     
     // Simplified version of the teleop winch state machine; no unwinding, or recovery from IDLE
@@ -202,7 +261,7 @@ public class Auton_Basic extends LinearOpMode {
         // Idle state:
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
-            winchMotor.setPower(0);
+            setPowerCached(winchMotor, 0);
 
             // Check conditions
             // if( operatorGamepad.y ){
@@ -212,7 +271,7 @@ public class Auton_Basic extends LinearOpMode {
         // Winding state
         else if( catapultState == CatapultState.WINDING ){
             // Turn motor on
-            winchMotor.setPower(1);
+            setPowerCached(winchMotor, 1);
             // Check conditions
             if( !magnetSensor.getState() ){
                 catapultState = CatapultState.DOWN;
@@ -227,7 +286,7 @@ public class Auton_Basic extends LinearOpMode {
             // Apply holding torque to motor
             double winchPower = (winchMotor.getCurrentPosition()-winchLaunchStart)
                     * -Calibration.WINCH_HOLDING_GAIN_P + Calibration.WINCH_HOLDING_FEEDFORWARD;
-            winchMotor.setPower(winchPower);
+            setPowerCached(winchMotor, winchPower);
 
             // Check conditions
             if( fireCatapult ){
@@ -240,7 +299,7 @@ public class Auton_Basic extends LinearOpMode {
         // Launching state
         else if( catapultState == CatapultState.LAUNCHING ){
             // Turn motor on
-            winchMotor.setPower(1);
+            setPowerCached(winchMotor, 1);
             // Check conditions
             if( (winchMotor.getCurrentPosition() - winchLaunchStart) > Calibration.WINCH_LAUNCH_AMOUNT ){
                 catapultState = CatapultState.WINDING; // Go back to winding unless canceled
@@ -256,6 +315,19 @@ public class Auton_Basic extends LinearOpMode {
         telemetry.addData("Winch State", catapultState);
     }
 
+    // Helper function to speed things up
+    void setPowerCached(DcMotor motor, double power){
+        // Get previous power value:
+        Double prevPower = cachedMotorPowers.get(motor);
+        if( prevPower == null ){
+            prevPower = 0.0;
+        }
+        // Only update motor power if it changed by more than 2%, or we're stopping:
+        if( Math.abs(power - prevPower) > 0.02 || (power == 0.0 && prevPower != 0.0) ) {
+            motor.setPower(power);
+            cachedMotorPowers.put(motor, power);
+        }
+    }
     
     void drive(double forward, double right, double rotate)
     {
@@ -281,10 +353,10 @@ public class Auton_Basic extends LinearOpMode {
         // We multiply by maxSpeed so that it can be set lower for outreaches
         // When a young child is driving the robot, we may not want to allow full
         // speed.
-        frontLeftDrive.setPower(maxSpeed * (frontLeftPower / maxPower));
-        frontRightDrive.setPower(maxSpeed * (frontRightPower / maxPower));
-        backLeftDrive.setPower(maxSpeed * (backLeftPower / maxPower));
-        backRightDrive.setPower(maxSpeed * (backRightPower / maxPower));
+        setPowerCached(frontLeftDrive, maxSpeed * (frontLeftPower / maxPower));
+        setPowerCached(frontRightDrive, maxSpeed * (frontRightPower / maxPower));
+        setPowerCached(backLeftDrive, maxSpeed * (backLeftPower / maxPower));
+        setPowerCached(backRightDrive, maxSpeed * (backRightPower / maxPower));
     }
 
 

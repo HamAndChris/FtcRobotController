@@ -30,53 +30,9 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
-import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-
-import java.util.List;
-
-/*
- * This OpMode illustrates the concept of driving a path based on encoder counts.
- * The code is structured as a LinearOpMode
- *
- * The code REQUIRES that you DO have encoders on the wheels,
- *   otherwise you would use: RobotAutoDriveByTime;
- *
- *  This code ALSO requires that the drive Motors have been configured such that a positive
- *  power command moves them forward, and causes the encoders to count UP.
- *
- *   The desired path in this example is:
- *   - Drive forward for 48 inches
- *   - Spin right for 12 Inches
- *   - Drive Backward for 24 inches
- *   - Stop and close the claw.
- *
- *  The code is written using a method called: encoderDrive(speed, leftInches, rightInches, timeoutS)
- *  that performs the actual movement.
- *  This method assumes that each movement is relative to the last stopping place.
- *  There are other ways to perform encoder based moves, but this method is probably the simplest.
- *  This code uses the RUN_TO_POSITION mode to enable the Motor controllers to generate the run profile
- *
- * Use Android Studio to Copy this Class, and Paste it into your team's code folder with a new name.
- * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
- */
 
 @Autonomous(name="Low Side: BLUE", group="Robot")
 public class Auton_Blue_LowSide extends Auton_Basic {
-    @Override
-    public String teamColor() {
-        return "BLUE";
-    }
 
     // Function that performs the desired autonomous tasks.
     @Override
@@ -86,40 +42,50 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         double started = runtime.seconds();
         catapultState = CatapultState.WINDING;
         while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() - started < 5) {
+            beginLoop("Step 0 (Winding)");
             doWinchStatemachine(false, false);
             distanceSensing.processSensors();
+            telemetry.update();
         }
 
         // Step 1 move forward a few inches
         started = runtime.seconds();
         while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
                 && runtime.seconds() - started < 3) {
+            beginLoop("Step 1 (Move forward)");
             distanceSensing.processSensors();
             doWinchStatemachine(false, false);
             drive(0.3, 0, 0);
+            telemetry.update();
         }
         drive(0, 0, 0);
 
         // step 2 line up to April Tag while winding winch, waiting up to 23 seconds for it to tip our way
         while(opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
+            beginLoop("Step 2 (Aimbot)");
             doWinchStatemachine(false, false);
             distanceSensing.processSensors();
             AlineToAprilTag();
+            telemetry.update();
         }
 
         // Step 3: Fire winch (timeout 2 seconds)
         started = runtime.seconds();
         while(opModeIsActive() && runtime.seconds() - started < 3 ) {
+            beginLoop("Step 3 (Launch)");
             doWinchStatemachine(true, false);
             distanceSensing.processSensors();
             AlineToAprilTag();
+            telemetry.update();
         }
 
         // Step 4: Strafe back to loading zone, while still winding winch
         while( opModeIsActive() && distanceSensing.RightDist_mm > 100 ){
-            distanceSensing.processSensors();
+            beginLoop("Step 4 (Strafe Right)");
             doWinchStatemachine(false, false);
+            distanceSensing.processSensors();
             strafeAlongWall(Calibration.AUTON_STRAFE_SPEED);
+            telemetry.update();
         }
 
         // Step 5: Stop

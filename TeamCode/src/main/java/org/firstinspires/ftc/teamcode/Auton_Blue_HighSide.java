@@ -30,31 +30,12 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
-import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-
-import java.util.List;
 
 
 @Autonomous(name="High Side: BLUE", group="Robot")
 public class Auton_Blue_HighSide extends Auton_Basic {
-    @Override
-    public String teamColor() {
-        return "BLUE";
-    }
 
     // Function that performs the desired autonomous tasks. Override this to create new autons
     // without repeating all the setup code.
@@ -65,56 +46,71 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         double started = runtime.seconds();
         catapultState = CatapultState.WINDING;
         while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() - started < 5) {
+            beginLoop("Step 0 (Winding)");
             doWinchStatemachine(false, false);
             distanceSensing.processSensors();
+            telemetry.update();
         }
 
         // Step 1 move forward a few inches
         while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
                 && runtime.seconds() < 3) {
+            beginLoop("Step 1 (Move forward)");
             distanceSensing.processSensors();
+            doWinchStatemachine(false, false);
             drive(0.3, 0, 0);
+            telemetry.update();
         }
         drive(0, 0, 0);
 
         // step 2 line up to April Tag and wind the winch, until we are on target (or timed out)
         while( opModeIsActive() && runtime.seconds() < 5 && !aprilSensing.OnTarget ) {
+            beginLoop("Step 2 (Aimbot)");
             doWinchStatemachine(false, false);
             distanceSensing.processSensors();
             AlineToAprilTag();
+            telemetry.update();
         }
 
         // Step 3: Fire winch (timeout 2 seconds)
         started = runtime.seconds();
         while(opModeIsActive() && runtime.seconds() - started < 2 && catapultState != CatapultState.WINDING ) {
+            beginLoop("Step 3 (Launch)");
             doWinchStatemachine(true, false);
             distanceSensing.processSensors();
             AlineToAprilTag();
+            telemetry.update();
         }
 
         // Step 4: Strafe left until we're 1 meter from the wall
         while( opModeIsActive() && distanceSensing.LeftDist_mm > 1000 ){
+            beginLoop("Step 4 (Strafe Left)");
             distanceSensing.processSensors();
             doWinchStatemachine(false, false);
             strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
+            telemetry.update();
         }
 
         // Step 5: Rotate 90 degrees to the right, so dual distance sensors face the left wall
         double yawStarted = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
         double rotated = 0;
         while( opModeIsActive() && rotated < 70 ){
+            beginLoop("Step 5 (Turn Right)");
             distanceSensing.processSensors();
             doWinchStatemachine(false, false);
             rotated = Math.abs(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES) - yawStarted);
             
             drive(0, -Calibration.AUTON_STRAFE_SPEED, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing
+            telemetry.update();
         }
 
         // Step 6: Strafe along left wall until we're 1 meter from the far wall
         while( opModeIsActive() && distanceSensing.LeftDist_mm > 1000 ){
+            beginLoop("Step 6 (Strafe Left Again)");
             distanceSensing.processSensors();
             doWinchStatemachine(false, false);
             strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
+            telemetry.update();
         }
 
         // Step 7: Stop

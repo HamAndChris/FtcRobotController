@@ -128,7 +128,7 @@ public class DistanceSensing {
 
         telemetry.addData("Lasers", "%.1f / %.1f / %.1f / %.1f mm",
                 distance_mm1, distance_mm2, distanceLeft_mm, distanceRight_mm);
-        telemetry.addData("Wall Angle", "%.1f deg", WallAngle_Deg);
+        telemetry.addData("Wall", "%.1f deg, %.1f mm", WallAngle_Deg, WallDist_mm);
 
     }
 }
