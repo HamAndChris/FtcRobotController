@@ -102,6 +102,9 @@ public class TeleopRedTeam extends OpMode {
     // PID variables:
     private double angle_integrator = 0;
 
+    // Rate limiting variables:
+    private double forwardLimited=0, rightLimited=0, rotateLimited=0, lastTime=0;
+
     // Other variables:
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
@@ -185,6 +188,11 @@ public class TeleopRedTeam extends OpMode {
         double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
         double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
 
+        // Apply rate limits to smooth out robot motion:
+        forwardLimited = applyRateLimit(forward, forwardLimited, Calibration.STICK_RATE_LIMIT);
+        rightLimited   = applyRateLimit(right,   rightLimited,   Calibration.STICK_RATE_LIMIT);
+        rotateLimited  = applyRateLimit(rotate,  rotateLimited,  Calibration.STICK_RATE_LIMIT);
+
         // Left bumper is now APRIL tag AUTO AIMBOT MODE
         if (gamepad1.left_bumper) {
             // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
@@ -194,24 +202,25 @@ public class TeleopRedTeam extends OpMode {
         else if (gamepad1.right_bumper) {
             // Wall following mode
             angle_integrator += distances.WallAngle_Deg;
-            rotate = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
+            double rotatePID = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
                     + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
 
             double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm)
                     * Calibration.LASER_DIST_GAIN_P;
-            forward = Math.max(Math.min(forwardPID, 0.5), -0.5); // Limit forward PID to half power
+            // Limit forward PID to low power:
+            forwardPID = Math.max(Math.min(forwardPID, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER);
             
-            // Correct forward/right ratio to keep moving straight along wall:
-            forward += right * Math.sin(distances.WallAngle_Rads);
-            right *= Math.cos(distances.WallAngle_Rads);
+            // Correct forward/right ratio with trigonometry to keep moving straight along the wall:
+            double rightCorrected = rightLimited * Math.cos(distances.WallAngle_Rads);
+            forwardPID += rightLimited * Math.sin(distances.WallAngle_Rads);
 
-            drive(forward, right, rotate);
+            drive(forwardPID, rightCorrected, rotatePID);
             telemetry.addData("Forward PID", "%.2f", forwardPID);
-            telemetry.addData("Rotate PID", "%.2f", rotate);
+            telemetry.addData("Rotate PID", "%.2f", rotatePID);
         } 
         else {
             // Just apply game stick inputs
-            drive(forward, right, rotate);
+            drive(forwardLimited, rightLimited, rotateLimited);
             angle_integrator = 0;
         }
 
@@ -221,11 +230,12 @@ public class TeleopRedTeam extends OpMode {
 
         /* ************* Intake Motor Logic *********** */
 
-        if( operatorGamepad.a ){
-            setIntakeMotors(1.0);
-        }
-        else if( operatorGamepad.left_stick_button ){
+        // Left trigger spits out, even if right trigger is still held:
+        if( operatorGamepad.left_trigger > 0.2 ){
             setIntakeMotors(-1);
+        }
+        else if( operatorGamepad.right_trigger > 0.2 ){
+            setIntakeMotors(1.0);
         }
         else {
             setIntakeMotors(0);
@@ -241,9 +251,26 @@ public class TeleopRedTeam extends OpMode {
             flowerBarPosition = Calibration.FLOWER_BAR_DOWN;
             setPositionCached(flowerBar, flowerBarPosition);
         }
-
         //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
+
+        // Send all telemetry to driver station:
         telemetry.update();
+
+        // Track previous loop time for rate calculations:
+        lastTime = time;
+    }
+
+    // Apply a single rate limit:
+    private double applyRateLimit(double desired, double last, double rateLimit){
+        // Calculate max allowed increase based on rate limit and passage of time:
+        double maxIncrease = (time - lastTime) * rateLimit;
+
+        // Allow only that much increase, but instant decrease back to zero:
+        if( last > 0 ){
+            return Math.max(Math.min(desired, last + maxIncrease), 0);
+        } else {
+            return Math.min(Math.max(desired, last - maxIncrease), 0);
+        }
     }
 
     private void doWinchStatemachine(boolean allowLaunch) {

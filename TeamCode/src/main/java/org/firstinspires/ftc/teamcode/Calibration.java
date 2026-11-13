@@ -10,14 +10,13 @@ public final class Calibration {
     // Prevent instantiation
     private Calibration() {}
 
-    // Used to determine which APRIL tag to find:
-    //public static final String TEAM_COLOR = "BLUE";
-    //public static final String TEAM_COLOR = "RED";
-
     // Winch control calibrations:
     public static final int WINCH_LAUNCH_AMOUNT = 1500; // Encoder ticks to fire the winch
     public static final double WINCH_HOLDING_FEEDFORWARD = 0.15; // Holding motor power
     public static final double WINCH_HOLDING_GAIN_P = 0.001; // Motor holding proportional gain
+
+    // User controls calibrations:
+    public static final double STICK_RATE_LIMIT = 2.0; // Maximum command change per second (to smooth out controls)
 
     // APRIL tag aim-bot calibrations:
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
@@ -27,11 +26,12 @@ public final class Calibration {
 
     // Laser distance sensor calibrations:
     public static final double LASER_DISTANCE_WIDTH_MM = 9 * 25.4; // TODO: Measure more precisely
-    public static final double LASER_ANGLE_GAIN_P = 1./800; // Laser angle alignment proportional gain
-    public static final double LASER_ANGLE_GAIN_I = 0.0;    // Laser angle alignment integral gain
+    public static final double LASER_ANGLE_GAIN_P   = 1./800; // Laser angle alignment proportional gain
+    public static final double LASER_ANGLE_GAIN_I   = 0.0;    // Laser angle alignment integral gain
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing
-    public static final double LASER_DIST_GAIN_P = 1./500;
-    public static final double LASER_SAMPLE_RATE  = 5;         // How often to sample the side lasers in autonomous (Hz)
+    public static final double LASER_DIST_GAIN_P    = 1./500;
+    public static final double LASER_DIST_MAXPOWER  = 0.3;
+    public static final double LASER_SAMPLE_RATE    = 5;         // How often to sample the side lasers in autonomous (Hz)
 
     // Autonomous behavior calibrations:
     public static final double AUTON_STRAFE_SPEED = 0.3;
