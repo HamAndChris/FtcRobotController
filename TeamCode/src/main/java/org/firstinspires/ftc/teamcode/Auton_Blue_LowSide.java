@@ -71,7 +71,7 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@Autonomous(name="Blue: Low Side", group="Robot")
+@Autonomous(name="Low Side: BLUE", group="Robot")
 public class Auton_Blue_LowSide extends Auton_Basic {
     @Override
     public String teamColor() {
@@ -82,11 +82,20 @@ public class Auton_Blue_LowSide extends Auton_Basic {
     @Override
     public void doAuton() 
     {
-        // Step 1 move forward a few inches
+        // Step 0: Winch down before we start moving
         double started = runtime.seconds();
+        catapultState = CatapultState.WINDING;
+        while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() - started < 5) {
+            doWinchStatemachine(false, false);
+            distanceSensing.processSensors();
+        }
+
+        // Step 1 move forward a few inches
+        started = runtime.seconds();
         while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
                 && runtime.seconds() - started < 3) {
             distanceSensing.processSensors();
+            doWinchStatemachine(false, false);
             drive(0.3, 0, 0);
         }
         drive(0, 0, 0);
@@ -100,7 +109,7 @@ public class Auton_Blue_LowSide extends Auton_Basic {
 
         // Step 3: Fire winch (timeout 2 seconds)
         started = runtime.seconds();
-        while(opModeIsActive() && runtime.seconds() - started < 2 && catapultState != CatapultState.WINDING ) {
+        while(opModeIsActive() && runtime.seconds() - started < 3 ) {
             doWinchStatemachine(true, false);
             distanceSensing.processSensors();
             AlineToAprilTag();
@@ -110,7 +119,7 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         while( opModeIsActive() && distanceSensing.RightDist_mm > 100 ){
             distanceSensing.processSensors();
             doWinchStatemachine(false, false);
-            strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
+            strafeAlongWall(Calibration.AUTON_STRAFE_SPEED);
         }
 
         // Step 5: Stop

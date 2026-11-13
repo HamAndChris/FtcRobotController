@@ -65,7 +65,7 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  *
  */
-@TeleOp(name = "Teleop Red Team", group = "Robot")
+@TeleOp(name = "Teleop: RED", group = "Robot")
 //@Disabled
 public class TeleopRedTeam extends OpMode {
     // Hardware objects declared here:
@@ -79,7 +79,7 @@ public class TeleopRedTeam extends OpMode {
     AnalogInput laserAnalog1, laserAnalog2;
     DistanceSensor distanceRight, distanceLeft;
     DigitalChannel magnetSensor;
-    Servo ledIndicator = null;
+    Servo ledIndicator, flowerBar;
     IMU imu;
 
     // Helper files:
@@ -93,7 +93,7 @@ public class TeleopRedTeam extends OpMode {
 
     // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
-    private CatapultState catapultState;
+    private CatapultState catapultState = CatapultState.WINDING;
     private int winchLaunchStart;
 
     // PID variables:
@@ -101,6 +101,7 @@ public class TeleopRedTeam extends OpMode {
 
     // Other variables:
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
+    double flowerBarPosition = 0.5;
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -129,6 +130,8 @@ public class TeleopRedTeam extends OpMode {
 
         distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
         distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
+        ledIndicator = hardwareMap.get(Servo.class, "Indicator");
+        flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
 
         imu = hardwareMap.get(IMU.class, "imu");
 
@@ -218,6 +221,18 @@ public class TeleopRedTeam extends OpMode {
             setIntakeMotors(0);
         }
 
+        /* ************* Flower Bar Controls *********** */
+
+        if( operatorGamepad.dpad_up ){
+            flowerBarPosition = Calibration.FLOWER_BAR_UP;
+            flowerBar.setPosition(flowerBarPosition);
+        }
+        if( operatorGamepad.dpad_down ){
+            flowerBarPosition = Calibration.FLOWER_BAR_DOWN;
+            flowerBar.setPosition(flowerBarPosition);
+        }
+
+        //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
         telemetry.update();
     }
 
@@ -281,23 +296,6 @@ public class TeleopRedTeam extends OpMode {
         }
     }
 
-    // private void initAprilTag() {
-
-    //     // Create the AprilTag processor the easy way.
-    //     aprilTag = AprilTagProcessor.easyCreateWithDefaults();
-
-    //     // Create the vision portal the easy way.
-    //     //visionPortal = VisionPortal.easyCreateWithDefaults(
-    //     //    hardwareMap.get(WebcamName.class, "Webcam 1"), aprilTag);
-    //     VisionPortal.Builder builder = new VisionPortal.Builder()
-    //             .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-    //             .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
-    //             .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-    //             .addProcessor(aprilTag);
-    //     visionPortal = builder.build();
-
-
-    // }   // end method initAprilTag()
     
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag(boolean display_only) {
@@ -315,51 +313,6 @@ public class TeleopRedTeam extends OpMode {
         }
     }
 
-    // private void AlineToAprilTag(boolean display_only) {
-
-    //     List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-    //     telemetry.addData("# AprilTags Detected", currentDetections.size());
-    //     boolean found = false;
-
-    //     // Step through the list of detections and display info for each one.
-    //     for (AprilTagDetection detection : currentDetections) {
-    //         if (detection instanceof AprilTagClusterDetection) {
-    //             AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
-    //             String name = clusterDet.metadata.name;
-    //             telemetry.addLine(String.format("\n==== Tag Cluster (%s)", name));
-    //             telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
-    //             telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-    //             telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-    //             telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-
-    //             if( name.contains(teamColor()) ){
-    //                 double rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.yaw)
-    //                         * Calibration.APRIL_YAW_GAIN_P;
-    //                 double forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
-    //                         * -Calibration.APRIL_DIST_GAIN_P;
-    //                 telemetry.addLine(String.format("rotate: %3.2f, forward: %3.2f", rotate, forward));
-    //                 if (!display_only) {
-    //                     drive(forward, 0, rotate);
-    //                 } else {
-    //                     drive(0, 0, 0);
-    //                 }
-    //                 found = true;
-    //             }
-    //         }
-    //     }   // end for() loop
-
-    //     // Set zero power if no april tags found:
-    //     if( !found || display_only){
-    //         drive(0, 0, 0);
-    //     }
-
-    //     // Add "key" information to telemetry
-    //     telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
-    //     telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
-    //     telemetry.addLine("RBE = Range, Bearing & Elevation");
-
-    //     telemetry.update();
-    // }
 
     /**
      * Checks if a gamepad is connected based on its ID.

@@ -20,9 +20,9 @@ public final class Calibration {
     public static final double WINCH_HOLDING_GAIN_P = 0.001; // Motor holding proportional gain
 
     // APRIL tag aim-bot calibrations:
-    public static final double APRIL_TARGET_DISTANCE = 36; // Adjust this to make the robot aim closer/farther from the hive
+    public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
     public static final double APRIL_DIST_GAIN_P = 0.1;
-    public static final double APRIL_TARGET_YAW = 0.0;  // Adjust this to make robot aim to the left/right
+    public static final double APRIL_TARGET_YAW = 2.0;  // Adjust this to make robot aim to the left/right
     public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
 
     // Laser distance sensor calibrations:
@@ -30,7 +30,7 @@ public final class Calibration {
     public static final double LASER_ANGLE_GAIN_P = 1./800; // Laser angle alignment proportional gain
     public static final double LASER_ANGLE_GAIN_I = 0.0;    // Laser angle alignment integral gain
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing
-    public static final double LASER_DIST_GAIN_P = 1./350;
+    public static final double LASER_DIST_GAIN_P = 1./500;
 
     // Autonomous behavior calibrations:
     public static final double AUTON_STRAFE_SPEED = 0.3;
@@ -52,6 +52,11 @@ public final class Calibration {
     public static final double LED_WINCH_READY   = LED_GREEN;
     public static final double LED_AIMING        = LED_YELLOW;
     public static final double LED_READY_TO_FIRE = LED_RED;
+
+    // Flower Bar positions:
+    public static final double FLOWER_BAR_UP = 0.18;
+    public static final double FLOWER_BAR_DOWN = 0.55;
+
 
     // Calculate the COUNTS_PER_INCH for your specific drive train.
     public static final double WHEEL_DIAMETER_INCHES  = 4.094; // For figuring circumference

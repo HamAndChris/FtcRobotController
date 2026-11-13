@@ -82,7 +82,7 @@ public class Auton_Basic extends LinearOpMode {
     // Winch state machine variables:
     enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
     int           winchLaunchStart;
-    CatapultState catapultState;
+    CatapultState catapultState = CatapultState.WINDING; // Always start winding
 
     // Other variables:
     final ElapsedTime runtime = new ElapsedTime();
@@ -105,11 +105,17 @@ public class Auton_Basic extends LinearOpMode {
         magnetSensor = hardwareMap.get(DigitalChannel.class, "MagSensor");
         intakeMotor1 = hardwareMap.get(DcMotor.class, "IntakeMotor");
         intakeMotor2 = hardwareMap.get(DcMotor.class, "IntakeMotor2");
+        winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
+        ledIndicator = hardwareMap.get(Servo.class, "Indicator");
+        flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
+        imu = hardwareMap.get(IMU.class, "imu");
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        winchMotor.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor2.setDirection(DcMotor.Direction.REVERSE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -147,7 +153,7 @@ public class Auton_Basic extends LinearOpMode {
     {
         // Step 1 move forward three inches
         double started = runtime.seconds();
-        while( opModeIsActive() && distanceSensing.WallDist_mm < 3*25.4 && runtime.seconds() - started < 3 ) {
+        while( opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() - started < 3 ) {
             distanceSensing.processSensors();
             drive(0.2, 0, 0);
         }
@@ -166,8 +172,8 @@ public class Auton_Basic extends LinearOpMode {
         // Apply rotation control loop:
         double rotate = distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
         // Correct forward/right ratio to keep moving straight along wall:
-        double right = Calibration.AUTON_STRAFE_SPEED * Math.cos(distanceSensing.WallAngle_Rads);
-        double forward = Calibration.AUTON_STRAFE_SPEED * Math.sin(distanceSensing.WallAngle_Rads);
+        double right = rightSpeed * Math.cos(distanceSensing.WallAngle_Rads);
+        double forward = rightSpeed * Math.sin(distanceSensing.WallAngle_Rads);
         // Apply distance control loop:
         forward += (Calibration.AUTON_STRAFE_DIST - distanceSensing.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
         drive(forward, right, rotate);
