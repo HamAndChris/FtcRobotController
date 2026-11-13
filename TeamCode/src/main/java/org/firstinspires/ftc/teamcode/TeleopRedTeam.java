@@ -86,7 +86,7 @@ public class TeleopRedTeam extends OpMode {
     IMU imu;
 
     // Helper files:
-    private DistanceSensing   distanceSensing;
+    private Distances         distances;
     private AprilTagProcessor aprilTag;
     private VisionPortal      visionPortal;
     private AprilSensing      aprilSensing;
@@ -153,7 +153,7 @@ public class TeleopRedTeam extends OpMode {
         frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Initialize the distance sensing algorithm:
-        distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
+        distances = new Distances(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
         // Initialize the April tag camera:
@@ -178,7 +178,7 @@ public class TeleopRedTeam extends OpMode {
             operatorGamepad = gamepad1;
         }
         // Read angle sensors:
-        distanceSensing.processSensors();
+        distances.processSensors();
 
         // Get chassis stick inputs, applying parabolic transform:
         double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * POWER_LEVEL;
@@ -193,17 +193,17 @@ public class TeleopRedTeam extends OpMode {
         } 
         else if (gamepad1.right_bumper) {
             // Wall following mode
-            angle_integrator += distanceSensing.WallAngle_Deg;
-            rotate = (distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
+            angle_integrator += distances.WallAngle_Deg;
+            rotate = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
                     + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
 
-            double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distanceSensing.WallDist_mm)
+            double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm)
                     * Calibration.LASER_DIST_GAIN_P;
             forward = Math.max(Math.min(forwardPID, 0.5), -0.5); // Limit forward PID to half power
             
             // Correct forward/right ratio to keep moving straight along wall:
-            forward += right * Math.sin(distanceSensing.WallAngle_Rads);
-            right *= Math.cos(distanceSensing.WallAngle_Rads);
+            forward += right * Math.sin(distances.WallAngle_Rads);
+            right *= Math.cos(distances.WallAngle_Rads);
 
             drive(forward, right, rotate);
             telemetry.addData("Forward PID", "%.2f", forwardPID);

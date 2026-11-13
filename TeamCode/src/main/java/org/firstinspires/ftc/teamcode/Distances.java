@@ -16,8 +16,6 @@ public class DistanceSensing {
     // State variables
     public double WallAngle_Deg = 0, WallAngle_Rads = 0;
     public double WallDist_mm = 0;
-    public double LeftDist_mm = 0;
-    public double RightDist_mm = 0;
     private static final double MAX_VOLTS = 3.3 * 800/1000;
     private static final double MAX_DISTANCE_MM = 1000.0;
     private static final double VALID_WALL_DISTANCE_MM = 9900.0; // Disabled by setting high
@@ -29,9 +27,12 @@ public class DistanceSensing {
     private final Telemetry telemetry;
     private final IMU imu;
 
-    // Performence enhancing variables:
-    private boolean lastSampledLeft = false;
+    // Private variables used for left/right distance sensing:
+    private double LeftDist_mm = 0, RightDist_mm = 0;
+    private double lastLeftSample = 0, lastRightSample = 0; // Timestamp when last sampled
+    private final ElapsedTime runtime = new ElapsedTime();
 
+    // Constructor:
     public DistanceSensing(AnalogInput analog1, AnalogInput analog2,
                            DistanceSensor distLeft, DistanceSensor distRight, IMU theImu,
                            Telemetry theTelemetry){
@@ -45,21 +46,78 @@ public class DistanceSensing {
         // Initialize the IMU:
         // This needs to be changed to match the orientation on your robot
 
-        // TODO: Figure out how to properly initialize the IMU angle taking into account the 30-degree mounting
-        
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
+        // // Old "simple orintation" code:
+        // RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
+        //         RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD;
+        // RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
+        //         RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
 
-        RevHubOrientationOnRobot orientationOnRobot = new
-                RevHubOrientationOnRobot(logoDirection, usbDirection);
+        // RevHubOrientationOnRobot orientationOnRobot = new
+        //         RevHubOrientationOnRobot(logoDirection, usbDirection);
+        // imu.initialize(new IMU.Parameters(orientationOnRobot));
+
+        // New IMU orientation reflecting 30-degree back slope:
+        Orientation hubRotation = new Orientation(
+                AxesReference.INTRINSIC,
+                AxesOrder.ZYX,
+                AngleUnit.DEGREES,
+                180,    // Z rotation
+                0,      // Y rotation
+                -120,    // X rotation (-90 - 30)
+                0
+        );
+
+        RevHubOrientationOnRobot orientationOnRobot =
+                new RevHubOrientationOnRobot(hubRotation);
+
         imu.initialize(new IMU.Parameters(orientationOnRobot));
     }
 
+    // Sample the right distance sensor, only if it's been long enough since the last sample.
+    // This improves performance because I2C reads slow everything down.
+    public double getRight_mm(double sampleRate_Hz)
+    {
+        double samplePeriod = 1.0/sampleRate_Hz;
+        double now = runtime.seconds();
+        if( now - lastRightSample >= samplePeriod ){
+            lastRightSample = now;
+            distanceRight_mm = distanceRight.getDistance(DistanceUnit.MM);
+        }
+        telemetry.addData("Right Laser", "%.1f mm", distanceRight_mm);
+        return distanceRight_mm;
+    }
+
+    // Sample the left distance sensor, only if it's been long enough since the last sample.
+    // This improves performance because I2C reads slow everything down.
+    public double getLeft_mm(double sampleRate_Hz)
+    {
+        double samplePeriod = 1.0/sampleRate_Hz;
+        double now = runtime.seconds();
+        if( now - lastLeftSample >= samplePeriod ){
+            lastLeftSample = now;
+            distanceLeft_mm = distanceLeft.getDistance(DistanceUnit.MM);
+        }
+        telemetry.addData("Left Laser", "%.1f mm", distanceLeft_mm);
+        return distanceLeft_mm;
+    }
+
+    // Shortcuts to use calibration value for sample rate:
+    public double getRight_mm(){
+        return getRight_mm(Calibration.LASER_SAMPLE_RATE);
+    }
+    public double getLeft_mm(){
+        return getLeft_mm(Calibration.LASER_SAMPLE_RATE);
+    }
+
+    // Get the yaw angle from the IMU, inverted so that positive = RIGHT
+    public double getIMUAngle(){
+        return -imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
+    }
+
+    // Process the rear sensors and calculate wall angle/distance.
+    // (don't read side sensors unless requested since reading I2C is slow)
     public void processSensors()
     {
-
         double distance_mm1, distance_mm2, distanceRight_mm, distanceLeft_mm;
 
         // Read sensor voltage (0.0–3.3V)
@@ -70,56 +128,31 @@ public class DistanceSensing {
         distance_mm1 = (volts1 / MAX_VOLTS) * MAX_DISTANCE_MM;
         distance_mm2 = (volts2 / MAX_VOLTS) * MAX_DISTANCE_MM;
 
-        // Read the i2c digital sensors
-        if( lastSampledLeft ) {
-            distanceRight_mm = distanceRight.getDistance(DistanceUnit.MM);
-            distanceLeft_mm = LeftDist_mm;
-        } else {
-            distanceLeft_mm = distanceLeft.getDistance(DistanceUnit.MM);
-            distanceRight_mm = RightDist_mm;
-        }
-
         // Apply moving average filters.
         // First shift new readings into table:
         for( int i = 1; i < FILTER_SIZE; i ++ ){
-            for( int j = 0; j < 4; j ++ ){
+            for( int j = 0; j < 2; j ++ ){
                 distanceSamples[j][i] = distanceSamples[j][i-1];
             }
         }
         distanceSamples[0][0] = distance_mm1;
         distanceSamples[1][0] = distance_mm2;
-        distanceSamples[2][0] = distanceLeft_mm;
-        distanceSamples[3][0] = distanceRight_mm;
-
-        // Toggle which side distance sensor to read (to improve loop time)
-        lastSampledLeft = !lastSampledLeft;
 
         // Then average top rows of table, and determine whether angle reading is valid:
         distance_mm1 = 0;
         distance_mm2 = 0;
-        distanceLeft_mm = 0;
-        distanceRight_mm = 0;
         WallAngleValid = true;
         for( int i = 0; i < FILTER_SIZE; i ++ ){
             distance_mm1 += distanceSamples[0][i];
             distance_mm2 += distanceSamples[1][i];
-            distanceLeft_mm += distanceSamples[2][i];
-            distanceRight_mm += distanceSamples[3][i];
             if( distanceSamples[0][i] > VALID_WALL_DISTANCE_MM || distanceSamples[1][i] > VALID_WALL_DISTANCE_MM ){
                 WallAngleValid = false;
             }
         }
         distance_mm1 /= FILTER_SIZE;
         distance_mm2 /= FILTER_SIZE;
-        distanceLeft_mm /= FILTER_SIZE;
-        distanceRight_mm /= FILTER_SIZE;
-
-        // Assign output variables:
-        LeftDist_mm = distanceLeft_mm;
-        RightDist_mm = distanceRight_mm;
 
         // Switch between IMU and angle sensors:
-        double currentYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
         if(WallAngleValid){
             // Calculate angle based on TRIGONOMETRY!!!
             WallAngle_Rads = Math.atan((distance_mm2-distance_mm1) / Calibration.LASER_DISTANCE_WIDTH_MM);
@@ -134,12 +167,15 @@ public class DistanceSensing {
         }
         else {
             // Angle sensors not valid. Use IMU dead reckoning instead (angle only)
-            WallAngle_Deg = (currentYaw - imuAngleWhenLastValid) + wallAngleWhenLastValid;
+            double currentIMU = getIMUAngle();
+            if( lastWallAngleValid ){
+                imuAngleWhenLastValid = currentIMU;
+            }
+            WallAngle_Deg = (currentIMU - imuAngleWhenLastValid) + wallAngleWhenLastValid;
         }
+        lastWallAngleValid = WallAngleValid;
 
-        telemetry.addData("Lasers", "%.1f / %.1f / %.1f / %.1f mm",
-                distance_mm1, distance_mm2, distanceLeft_mm, distanceRight_mm);
-        telemetry.addData("Wall", "%.1f deg, %.1f mm", WallAngle_Deg, WallDist_mm);
-
+        telemetry.addData("Rear Lasers", "%.1f mm, %.1f mm", distance_mm1, distance_mm2);
+        telemetry.addData("Wall", "%.1f mm, %.1f deg", WallDist_mm, WallAngle_Deg);
     }
 }

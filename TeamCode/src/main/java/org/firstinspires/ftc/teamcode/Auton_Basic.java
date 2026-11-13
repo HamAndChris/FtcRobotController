@@ -41,6 +41,8 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -80,7 +82,7 @@ public class Auton_Basic extends LinearOpMode {
     // Helper files:
     AprilTagProcessor aprilTag;
     AprilSensing      aprilSensing;
-    DistanceSensing   distanceSensing;
+    Distances         distances;
 
     // Winch state machine variables:
     enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -90,6 +92,7 @@ public class Auton_Basic extends LinearOpMode {
     // Other variables:
     final ElapsedTime runtime = new ElapsedTime();
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
+    private double lastLaunchCommand = 0;
 
     // FPS profiling:
     private final Deque<Double> timestamps = new ArrayDeque<>();
@@ -143,7 +146,7 @@ public class Auton_Basic extends LinearOpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Initialize the distance sensing algorithm:
-        distanceSensing = new DistanceSensing(laserAnalog1, laserAnalog2,
+        distances = new distances(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
         // Initialize the APRIL tag sensing / webcam
@@ -154,11 +157,12 @@ public class Auton_Basic extends LinearOpMode {
 
         // Keep the winch wound while we wait for user to press START:
         while( opModeInInit() ){
-            beginLoop("Initialized (Winding)");
-            doWinchStatemachine(false, false);
+            beginLoop("Initialize (Winding)");
             telemetry.update();
-            idle();
         }
+
+        // Set the elapsed time to zero:
+        runtime.reset();
 
         // Call the doAuton function, which will be overridden by other auton modes:
         doAuton();
@@ -168,31 +172,18 @@ public class Auton_Basic extends LinearOpMode {
     // without repeating all the setup code.
     public void doAuton()
     {
-        // Step 0: Winch down before we start moving
-        double started = runtime.seconds();
-        while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() - started < 5) {
-            beginLoop("Step 0 (Winding)");
-            doWinchStatemachine(false, false);
-            distanceSensing.processSensors();
-            telemetry.update();
-            idle();
-        }
-
         // Step 1 move forward three inches
-        started = runtime.seconds();
-        while( opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() - started < 3 ) {
+        while( opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Moving Forward)");
             doWinchStatemachine(false, false);
-            distanceSensing.processSensors();
             drive(0.2, 0, 0);
             telemetry.update();
-            idle();
         }
 
         // Step 2: Stop
         drive(0, 0, 0);
 
-        telemetry.addData("Path", "Complete");
+        telemetry.addData("Autonomy", "Complete");
         telemetry.update();
         sleep(1000);  // pause to display final telemetry message.
     }
@@ -215,7 +206,7 @@ public class Auton_Basic extends LinearOpMode {
             timestamps.removeFirst();
         }
 
-        // Not enough samples yet
+        // Calculate FPS if there are enough samples
         if (timestamps.size() == FPS_SAMPLES) {
             // Calculate rate: (number of calls - 1) / time span
             double span = timestamps.getLast() - timestamps.getFirst();
@@ -223,6 +214,26 @@ public class Auton_Basic extends LinearOpMode {
         }
 
         telemetry.addData(label, "%.2f s, %.1 FPS", now, fps);
+
+        // Update the laser sensors here, since we always want the moving average running:
+        distances.processSensors();
+
+        // Also process the winch state machine since we always want to keep its control loop active:
+        doWinchStatemachine(false, false);
+    }
+
+    // Helper to rotate the robot to a desired angle (positive = RIGHT), while optionally strafing and driving.
+    // Returns true when angle has been achieved.
+    // NOTE: IMU reading wraps around at 180 degrees, so never exceed that and always call imu.reset() beforehand
+    boolean rotateToIMUAngle(double targetAngle, double right, double forward)
+    {
+        double currentAngle = distances.getIMUAngle();
+        // Apply rotation control loop:
+        double rotate = (targetAngle - currentAngle) * Calibration.AUTON_ANGLE_GAIN_P;
+        drive(forward, right, rotate);
+
+        // Return true if the angle is within 3 degrees:
+        return Math.abs(targetAngle - currentAngle) < 3.0;
     }
 
 
@@ -230,12 +241,12 @@ public class Auton_Basic extends LinearOpMode {
     void strafeAlongWall(double rightSpeed)
     {
         // Apply rotation control loop:
-        double rotate = distanceSensing.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
+        double rotate = distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
         // Correct forward/right ratio to keep moving straight along wall:
-        double right = rightSpeed * Math.cos(distanceSensing.WallAngle_Rads);
-        double forward = rightSpeed * Math.sin(distanceSensing.WallAngle_Rads);
+        double right = rightSpeed * Math.cos(distances.WallAngle_Rads);
+        double forward = rightSpeed * Math.sin(distances.WallAngle_Rads);
         // Apply distance control loop:
-        forward += (Calibration.AUTON_STRAFE_DIST - distanceSensing.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
+        forward += (Calibration.AUTON_STRAFE_DIST - distances.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
         drive(forward, right, rotate);
     }
 
@@ -255,6 +266,20 @@ public class Auton_Basic extends LinearOpMode {
     void setIntakeMotors(double speed){
         setPowerCached(intakeMotor1, speed);
         setPowerCached(intakeMotor2, speed);
+    }
+
+    // Call this to trigger a catapult launch (since doWinchStatemachine is called from beginLoop now)
+    void launchCatapult(){
+        // Manipulating the state directly. Only allow when in DOWN state.
+        if( catapultState == CatapultState.DOWN ){
+            catapultState = CatapultState.LAUNCHING;
+            lastLaunchCommand = runtime.seconds();
+        }
+    }
+
+    // Return true if the catapult has finished launching or timed out
+    boolean waitingForLaunch(){
+        return catapultState == CatapultState.LAUNCHING && (runtime.seconds() - lastLaunchCommand) < 2.0;
     }
     
     // Simplified version of the teleop winch state machine; no unwinding, or recovery from IDLE
@@ -310,7 +335,7 @@ public class Auton_Basic extends LinearOpMode {
             catapultState = CatapultState.IDLE;
         }
 
-        telemetry.addData("Winch State", catapultState);
+        telemetry.addData("Winch State", catapultState.name());
     }
 
     // Helper function to speed up loop time
