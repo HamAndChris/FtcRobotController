@@ -31,12 +31,14 @@ public final class Calibration {
     public static final double LASER_ANGLE_GAIN_I = 0.0;    // Laser angle alignment integral gain
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing
     public static final double LASER_DIST_GAIN_P = 1./500;
+    public static final double LASER_SAMPLE_RATE  = 5;         // How often to sample the side lasers in autonomous (Hz)
 
     // Autonomous behavior calibrations:
     public static final double AUTON_STRAFE_SPEED = 0.3;
     public static final double AUTON_ROTATE_SPEED = 0.3;
     public static final double AUTON_STRAFE_DIST  = 22 * 25.4; // Distance from center of robot to wall when strafing in autonomous
     public static final double AUTON_STEP_1_DIST  = 18 * 25.4; // How far to come off wall before beginning to look for APRIL tags
+    public static final double AUTON_ANGLE_GAIN_P = 0.3/90; // IMU angle alignment proportional gain
 
     // LED control values from documentation:
     public static final double LED_OFF    = 0.00;

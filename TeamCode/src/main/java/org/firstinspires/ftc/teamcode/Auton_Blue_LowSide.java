@@ -38,43 +38,30 @@ public class Auton_Blue_LowSide extends Auton_Basic {
     @Override
     public void doAuton() 
     {
-        // Step 0: Winch down before we start moving (now moved to initialization)
-        // catapultState = CatapultState.WINDING;
-        // while(opModeIsActive() && catapultState == CatapultState.WINDING && runtime.seconds() < 5) {
-        //     beginLoop("Step 0 (Winding)");
-        //     doWinchStatemachine(false, false);
-        //     telemetry.update();
-        // }
-
         // Step 1 move forward a few inches
-        while(opModeIsActive() && distanceSensing.WallDist_mm < Calibration.AUTON_STEP_1_DIST
-                && runtime.seconds() < 3) {
+        while( opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
-            telemetry.update();
         }
         drive(0, 0, 0);
 
         // step 2 line up to April Tag while winding winch, waiting up to 23 seconds for it to tip our way
-        while(opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
+        while( opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
             beginLoop("Step 2 (Aimbot)");
             AlineToAprilTag();
-            telemetry.update();
         }
-        drive(0, 0, 0);
 
         // Step 3: Fire winch (timeout 2 seconds)
         launchCatapult();
-        while(opModeIsActive() && waitingForLaunch() ) {
+        drive(0, 0, 0);
+        while( opModeIsActive() && waitingForLaunch() ) {
             beginLoop("Step 3 (Launch)");
-            telemetry.update();
         }
 
         // Step 4: Strafe back to loading zone, while still winding winch
-        while( opModeIsActive() && distanceSensing.getRight_mm() > 100 ){
+        while( opModeIsActive() && distances.getRight_mm() > 100 ){
             beginLoop("Step 4 (Strafe Right)");
             strafeAlongWall(Calibration.AUTON_STRAFE_SPEED);
-            telemetry.update();
         }
 
         // Step 5: Stop

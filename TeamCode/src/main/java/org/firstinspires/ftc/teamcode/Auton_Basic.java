@@ -158,7 +158,6 @@ public class Auton_Basic extends LinearOpMode {
         // Keep the winch wound while we wait for user to press START:
         while( opModeInInit() ){
             beginLoop("Initialize (Winding)");
-            telemetry.update();
         }
 
         // Set the elapsed time to zero:
@@ -177,7 +176,6 @@ public class Auton_Basic extends LinearOpMode {
             beginLoop("Step 1 (Moving Forward)");
             doWinchStatemachine(false, false);
             drive(0.2, 0, 0);
-            telemetry.update();
         }
 
         // Step 2: Stop
@@ -191,6 +189,9 @@ public class Auton_Basic extends LinearOpMode {
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
     // Make sure you always call this at the beginning of each loop in doAuton()
     void beginLoop(String label) {
+        // Send the previously added telemetry lines:
+        telemetry.update();
+
         // Clear cached hardware reads to speed up I/O access:
         for (LynxModule hub : allHubs) {
             hub.clearBulkCache();
@@ -405,9 +406,7 @@ public class Auton_Basic extends LinearOpMode {
      *  2) Move runs out of time
      *  3) Driver stops the OpMode running.
      */
-    public void drivePosition(double speed,
-                             //double leftInches, double rightInches,
-                             double timeoutS, double forward, double right, double rotate) {
+    public void drivePosition(double speed, double timeoutS, double forward, double right, double rotate) {
         int newFrontLeftTarget;
         int newFrontRightTarget;
         int newBackLeftTarget;
@@ -424,10 +423,6 @@ public class Auton_Basic extends LinearOpMode {
             double backLeftInches = forward - right + rotate;
 
             // Determine new target position, and pass to motor controller
-            //newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
-            //newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(leftInches * COUNTS_PER_INCH);
-            //newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
-            //newBackRightTarget = backRightDrive.getCurrentPosition() + (int)(rightInches * COUNTS_PER_INCH);
             newFrontLeftTarget = frontLeftDrive.getCurrentPosition() + (int)(frontLeftInches * Calibration.COUNTS_PER_INCH);
             newBackLeftTarget = backLeftDrive.getCurrentPosition() + (int)(backLeftInches * Calibration.COUNTS_PER_INCH);
             newFrontRightTarget = frontRightDrive.getCurrentPosition() + (int)(frontRightInches * Calibration.COUNTS_PER_INCH);
@@ -444,7 +439,7 @@ public class Auton_Basic extends LinearOpMode {
             backRightDrive.setMode(DcMotor.RunMode.RUN_TO_POSITION);
 
             // reset the timeout time and start motion.
-            runtime.reset();
+            double start = runtime.seconds();
             frontLeftDrive.setPower(Math.abs(speed));
             frontRightDrive.setPower(Math.abs(speed));
             backLeftDrive.setPower(Math.abs(speed));
@@ -458,9 +453,10 @@ public class Auton_Basic extends LinearOpMode {
             // However, if you require that BOTH motors have finished their moves before the robot continues
             // onto the next step, use (isBusy() || isBusy()) in the loop test.
             while (opModeIsActive() &&
-                   (runtime.seconds() < timeoutS) &&
+                   (runtime.seconds()-start < timeoutS) &&
                    (frontLeftDrive.isBusy() || frontRightDrive.isBusy() ||
-                           backLeftDrive.isBusy() || backRightDrive.isBusy()       )) {
+                     backLeftDrive.isBusy() || backRightDrive.isBusy()) ) {
+                beginLoop("drivePosition");
 
                 // Display it for the driver.
                 telemetry.addData("Running to",  " %7d :%7d", newFrontLeftTarget, newFrontRightTarget);

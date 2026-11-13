@@ -46,7 +46,6 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         while(opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
-            telemetry.update();
         }
         drive(0, 0, 0);
 
@@ -54,7 +53,6 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         while( opModeIsActive() && runtime.seconds() < 25 && !aprilSensing.OnTarget ) {
             beginLoop("Step 2 (Aimbot)");
             AlineToAprilTag();
-            telemetry.update();
         }
         drive(0, 0, 0);
 
@@ -62,14 +60,12 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         launchCatapult();
         while(opModeIsActive() && waitingForLaunch() ) {
             beginLoop("Step 3 (Launch)");
-            telemetry.update();
         }
 
         // Step 4: Strafe left until we're 1 meter from the wall
         while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
             beginLoop("Step 4 (Strafe Left)");
             strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
-            telemetry.update();
         }
 
         // Step 5: Rotate 90 degrees to the right, so dual distance sensors face the left wall
@@ -77,14 +73,12 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         while( opModeIsActive() && distances.getIMUAngle() < 90 ){
             beginLoop("Step 5 (Turn Right)");
             drive(0, -Calibration.AUTON_STRAFE_SPEED, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing left
-            telemetry.update();
         }
 
         // Step 6: Strafe along left wall until we're 1 meter from the far wall
         while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
             beginLoop("Step 6 (Strafe Left Again)");
             strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
-            telemetry.update();
         }
 
         // Step 7: Stop
