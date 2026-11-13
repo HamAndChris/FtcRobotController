@@ -41,7 +41,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+import org.firstinspires.ftc.teamcode.AprilSensing;
 
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -146,7 +146,7 @@ public class Auton_Basic extends LinearOpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Initialize the distance sensing algorithm:
-        distances = new distances(laserAnalog1, laserAnalog2,
+        distances = new Distances(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
         // Initialize the APRIL tag sensing / webcam

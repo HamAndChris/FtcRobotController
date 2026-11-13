@@ -4,12 +4,16 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
-public class DistanceSensing {
+public class Distances {
     // Settings:
     private static final int FILTER_SIZE = 2;
     private double[][] distanceSamples = new double[4][FILTER_SIZE];
@@ -28,12 +32,12 @@ public class DistanceSensing {
     private final IMU imu;
 
     // Private variables used for left/right distance sensing:
-    private double LeftDist_mm = 0, RightDist_mm = 0;
+    private double leftDist_mm = 0, rightDist_mm = 0;
     private double lastLeftSample = 0, lastRightSample = 0; // Timestamp when last sampled
     private final ElapsedTime runtime = new ElapsedTime();
 
     // Constructor:
-    public DistanceSensing(AnalogInput analog1, AnalogInput analog2,
+    public Distances(AnalogInput analog1, AnalogInput analog2,
                            DistanceSensor distLeft, DistanceSensor distRight, IMU theImu,
                            Telemetry theTelemetry){
         laserAnalog1 = analog1;
@@ -81,10 +85,10 @@ public class DistanceSensing {
         double now = runtime.seconds();
         if( now - lastRightSample >= samplePeriod ){
             lastRightSample = now;
-            distanceRight_mm = distanceRight.getDistance(DistanceUnit.MM);
+            rightDist_mm = distanceRight.getDistance(DistanceUnit.MM);
         }
-        telemetry.addData("Right Laser", "%.1f mm", distanceRight_mm);
-        return distanceRight_mm;
+        telemetry.addData("Right Laser", "%.1f mm", rightDist_mm);
+        return rightDist_mm;
     }
 
     // Sample the left distance sensor, only if it's been long enough since the last sample.
@@ -95,10 +99,10 @@ public class DistanceSensing {
         double now = runtime.seconds();
         if( now - lastLeftSample >= samplePeriod ){
             lastLeftSample = now;
-            distanceLeft_mm = distanceLeft.getDistance(DistanceUnit.MM);
+            leftDist_mm = distanceLeft.getDistance(DistanceUnit.MM);
         }
-        telemetry.addData("Left Laser", "%.1f mm", distanceLeft_mm);
-        return distanceLeft_mm;
+        telemetry.addData("Left Laser", "%.1f mm", leftDist_mm);
+        return leftDist_mm;
     }
 
     // Shortcuts to use calibration value for sample rate:
@@ -163,7 +167,6 @@ public class DistanceSensing {
             WallDist_mm = hypotenuse * Math.abs(Math.cos(WallAngle_Rads));
 
             wallAngleWhenLastValid = WallAngle_Deg;
-            imuAngleWhenLastValid = currentYaw;
         }
         else {
             // Angle sensors not valid. Use IMU dead reckoning instead (angle only)
