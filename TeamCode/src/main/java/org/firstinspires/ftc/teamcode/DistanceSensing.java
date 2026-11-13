@@ -29,6 +29,9 @@ public class DistanceSensing {
     private final Telemetry telemetry;
     private final IMU imu;
 
+    // Performence enhancing variables:
+    private boolean lastSampledLeft = false;
+
     public DistanceSensing(AnalogInput analog1, AnalogInput analog2,
                            DistanceSensor distLeft, DistanceSensor distRight, IMU theImu,
                            Telemetry theTelemetry){
@@ -68,8 +71,13 @@ public class DistanceSensing {
         distance_mm2 = (volts2 / MAX_VOLTS) * MAX_DISTANCE_MM;
 
         // Read the i2c digital sensors
-        distanceLeft_mm = distanceLeft.getDistance(DistanceUnit.MM);
-        distanceRight_mm = distanceRight.getDistance(DistanceUnit.MM);
+        if( lastSampledLeft ) {
+            distanceRight_mm = distanceRight.getDistance(DistanceUnit.MM);
+            distanceLeft_mm = LeftDist_mm;
+        } else {
+            distanceLeft_mm = distanceLeft.getDistance(DistanceUnit.MM);
+            distanceRight_mm = RightDist_mm;
+        }
 
         // Apply moving average filters.
         // First shift new readings into table:
@@ -82,6 +90,9 @@ public class DistanceSensing {
         distanceSamples[1][0] = distance_mm2;
         distanceSamples[2][0] = distanceLeft_mm;
         distanceSamples[3][0] = distanceRight_mm;
+
+        // Toggle which side distance sensor to read (to improve loop time)
+        lastSampledLeft = !lastSampledLeft;
 
         // Then average top rows of table, and determine whether angle reading is valid:
         distance_mm1 = 0;

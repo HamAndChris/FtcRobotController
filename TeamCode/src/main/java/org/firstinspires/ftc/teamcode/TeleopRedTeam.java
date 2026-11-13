@@ -36,6 +36,7 @@ import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -104,7 +105,7 @@ public class TeleopRedTeam extends OpMode {
     // Other variables:
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
-    Dictionary<DcMotor, Double> cachedMotorPowers = new Hashtable<>();
+    Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -234,11 +235,11 @@ public class TeleopRedTeam extends OpMode {
 
         if( operatorGamepad.dpad_up ){
             flowerBarPosition = Calibration.FLOWER_BAR_UP;
-            flowerBar.setPosition(flowerBarPosition);
+            setPositionCached(flowerBar, flowerBarPosition);
         }
         if( operatorGamepad.dpad_down ){
             flowerBarPosition = Calibration.FLOWER_BAR_DOWN;
-            flowerBar.setPosition(flowerBarPosition);
+            setPositionCached(flowerBar, flowerBarPosition);
         }
 
         //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
@@ -250,10 +251,10 @@ public class TeleopRedTeam extends OpMode {
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
            if (operatorGamepad.b ){
-               winchMotor.setPower(-0.5);
+               setPowerCached(winchMotor, -0.5);
            }
            else {
-               winchMotor.setPower(0);
+               setPowerCached(winchMotor, 0);
            }
             // Check conditions
             if( operatorGamepad.y ){
@@ -263,7 +264,7 @@ public class TeleopRedTeam extends OpMode {
         // Winding state
         else if( catapultState == CatapultState.WINDING ){
             // Turn motor on
-            winchMotor.setPower(1);
+            setPowerCached(winchMotor, 1);
             // Check conditions
             if( !magnetSensor.getState() ){
                 catapultState = CatapultState.DOWN;
@@ -278,7 +279,7 @@ public class TeleopRedTeam extends OpMode {
             // Apply holding torque to motor
             double winchPower = (winchMotor.getCurrentPosition()-winchLaunchStart)
                     * -Calibration.WINCH_HOLDING_GAIN_P + Calibration.WINCH_HOLDING_FEEDFORWARD;
-            winchMotor.setPower(winchPower);
+            setPowerCached(winchMotor, winchPower);
 
             // Check conditions
             if( operatorGamepad.x && allowLaunch ){
@@ -291,7 +292,7 @@ public class TeleopRedTeam extends OpMode {
         // Launching state
         else if( catapultState == CatapultState.LAUNCHING ){
             // Turn motor on
-            winchMotor.setPower(1);
+            setPowerCached(winchMotor, 1);
             // Check conditions
             if( (winchMotor.getCurrentPosition() - winchLaunchStart) > Calibration.WINCH_LAUNCH_AMOUNT ){
                 catapultState = CatapultState.WINDING; // Go back to winding unless canceled
@@ -319,6 +320,20 @@ public class TeleopRedTeam extends OpMode {
         }
     }
 
+    // Helper function to speed up loop time
+    void setPositionCached(Servo servo, double pos){
+        // Get previous power value:
+        Double prevPos = cachedMotorPowers.get(servo);
+        if( prevPos == null ){
+            prevPos = 0.0;
+        }
+        // Only update position if it changed by more than 2%:
+        if( Math.abs(pos - prevPos) > 0.02 ) {
+            servo.setPosition(pos);
+            cachedMotorPowers.put(servo, pos);
+        }
+    }
+
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag(boolean display_only) {
         aprilSensing.performSensing();
@@ -328,10 +343,10 @@ public class TeleopRedTeam extends OpMode {
 
         // Turn on LED:
         if( aprilSensing.OnTarget ){
-            ledIndicator.setPosition(Calibration.LED_READY_TO_FIRE);
+            setPositionCached(ledIndicator, Calibration.LED_READY_TO_FIRE);
         }
         else if( aprilSensing.Detected ){
-            ledIndicator.setPosition(Calibration.LED_AIMING);
+            setPositionCached(ledIndicator, Calibration.LED_AIMING);
         }
     }
 

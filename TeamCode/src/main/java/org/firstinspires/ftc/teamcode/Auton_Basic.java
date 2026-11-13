@@ -36,6 +36,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -88,7 +89,7 @@ public class Auton_Basic extends LinearOpMode {
 
     // Other variables:
     final ElapsedTime runtime = new ElapsedTime();
-    Dictionary<DcMotor, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
+    Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
 
     // FPS profiling:
     private final Deque<Double> timestamps = new ArrayDeque<>();
@@ -243,10 +244,10 @@ public class Auton_Basic extends LinearOpMode {
         aprilSensing.performSensing();
         drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate); 
         if( aprilSensing.OnTarget ){
-            ledIndicator.setPosition(Calibration.LED_READY_TO_FIRE);
+            setPositionCached(ledIndicator, Calibration.LED_READY_TO_FIRE);
         }
         else if( aprilSensing.Detected ){
-            ledIndicator.setPosition(Calibration.LED_AIMING);
+            setPositionCached(ledIndicator, Calibration.LED_AIMING);
         }
     }
     
@@ -263,10 +264,7 @@ public class Auton_Basic extends LinearOpMode {
             // Turn motor off
             setPowerCached(winchMotor, 0);
 
-            // Check conditions
-            // if( operatorGamepad.y ){
-            //     catapultState = CatapultState.WINDING;
-            // }
+            // No conditions to exit IDLE in autonomous mode :(
         }
         // Winding state
         else if( catapultState == CatapultState.WINDING ){
@@ -315,7 +313,7 @@ public class Auton_Basic extends LinearOpMode {
         telemetry.addData("Winch State", catapultState);
     }
 
-    // Helper function to speed things up
+    // Helper function to speed up loop time
     void setPowerCached(DcMotor motor, double power){
         // Get previous power value:
         Double prevPower = cachedMotorPowers.get(motor);
@@ -326,6 +324,20 @@ public class Auton_Basic extends LinearOpMode {
         if( Math.abs(power - prevPower) > 0.02 || (power == 0.0 && prevPower != 0.0) ) {
             motor.setPower(power);
             cachedMotorPowers.put(motor, power);
+        }
+    }
+
+    // Helper function to speed up loop time
+    void setPositionCached(Servo servo, double pos){
+        // Get previous power value:
+        Double prevPos = cachedMotorPowers.get(servo);
+        if( prevPos == null ){
+            prevPos = 0.0;
+        }
+        // Only update position if it changed by more than 2%:
+        if( Math.abs(pos - prevPos) > 0.02 ) {
+            servo.setPosition(pos);
+            cachedMotorPowers.put(servo, pos);
         }
     }
     
