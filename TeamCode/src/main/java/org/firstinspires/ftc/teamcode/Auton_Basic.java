@@ -145,6 +145,12 @@ public class Auton_Basic extends LinearOpMode {
         backLeftDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        // Make motors brake when stopping
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         // Initialize the distance sensing algorithm:
         distances = new Distances(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
@@ -214,7 +220,7 @@ public class Auton_Basic extends LinearOpMode {
             fps = span > 0 ? (timestamps.size() - 1) / span : 0.0;
         }
 
-        telemetry.addData(label, "%.2f s, %.1 FPS", now, fps);
+        telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
 
         // Update the laser sensors here, since we always want the moving average running:
         distances.processSensors();

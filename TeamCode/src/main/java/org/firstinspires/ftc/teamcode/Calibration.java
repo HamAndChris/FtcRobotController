@@ -16,16 +16,16 @@ public final class Calibration {
     public static final double WINCH_HOLDING_GAIN_P = 0.001; // Motor holding proportional gain
 
     // User controls calibrations:
-    public static final double STICK_RATE_LIMIT = 2.0; // Maximum command change per second (to smooth out controls)
+    public static final double STICK_RATE_LIMIT = 4.0; // Maximum command change per second (to smooth out controls)
 
     // APRIL tag aim-bot calibrations:
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
     public static final double APRIL_DIST_GAIN_P = 0.1;
-    public static final double APRIL_TARGET_YAW = 2.0;  // Adjust this to make robot aim to the left/right
+    public static final double APRIL_TARGET_YAW = 4.0;  // Adjust this to make robot aim to the left/right
     public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
 
     // Laser distance sensor calibrations:
-    public static final double LASER_DISTANCE_WIDTH_MM = 9 * 25.4; // TODO: Measure more precisely
+    public static final double LASER_DISTANCE_WIDTH_MM = 15.375 * 25.4; // TODO: Measure more precisely
     public static final double LASER_ANGLE_GAIN_P   = 1./800; // Laser angle alignment proportional gain
     public static final double LASER_ANGLE_GAIN_I   = 0.0;    // Laser angle alignment integral gain
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing

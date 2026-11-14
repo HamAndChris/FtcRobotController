@@ -28,6 +28,7 @@
  */
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -50,6 +51,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
@@ -92,7 +95,7 @@ public class TeleopRedTeam extends OpMode {
     private AprilSensing      aprilSensing;
 
     // Constants:
-    private static final double POWER_LEVEL = 0.9; // 1.0 = full speed
+    private static final double POWER_LEVEL = 1.0; // 1.0 = full speed
 
     // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -101,6 +104,12 @@ public class TeleopRedTeam extends OpMode {
 
     // PID variables:
     private double angle_integrator = 0;
+
+    // FPS profiling:
+    private final Deque<Double> timestamps = new ArrayDeque<>();
+    private static final int FPS_SAMPLES = 3;
+    private List<LynxModule> allHubs;
+    private String modeString;
 
     // Rate limiting variables:
     private double forwardLimited=0, rightLimited=0, rotateLimited=0, lastTime=0;
@@ -155,31 +164,60 @@ public class TeleopRedTeam extends OpMode {
         backRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         frontRightDrive.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        // Make motors brake when stopping
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         // Initialize the distance sensing algorithm:
         distances = new Distances(laserAnalog1, laserAnalog2,
                 distanceLeft, distanceRight, imu, telemetry);
 
         // Initialize the April tag camera:
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
+
+        // 1. Retrieve all connected REV Hubs (Control Hub + Expansion Hub)
+        allHubs = hardwareMap.getAll(LynxModule.class);
+        // 2. Set every hub to MANUAL bulk caching mode
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
+        }
+
+        // Decide if we're using one gamepad or two:
+        if( isGamepadConnected(gamepad2) ){
+            operatorGamepad = gamepad2;
+            modeString = "Dual Gamepad Mode";
+        }
+        else {
+            operatorGamepad = gamepad1;
+            modeString = "Single Gamepad Mode";
+        }
     }
 
     @Override
     public void init_loop() {
+        // Clear cached hardware reads to speed up I/O access:
+        for (LynxModule hub : allHubs) {
+            hub.clearBulkCache();
+        }
+        displayFPS(modeString);
+        distances.processSensors();
         // Keep the winch wound when the user initialized the robot
         doWinchStatemachine(false);
+        telemetry.update();
     }
 
     @Override
     public void loop() {
-        // Decide if we're using one gamepad or two:
-        if( isGamepadConnected(gamepad2) ){
-            telemetry.addLine("Dual Gamepad Mode");
-            operatorGamepad = gamepad2;
+
+        // Clear cached hardware reads to speed up I/O access:
+        for (LynxModule hub : allHubs) {
+            hub.clearBulkCache();
         }
-        else {
-            telemetry.addLine("Single Gamepad Mode");
-            operatorGamepad = gamepad1;
-        }
+
+        displayFPS(modeString);
+
         // Read angle sensors:
         distances.processSensors();
 
@@ -260,13 +298,40 @@ public class TeleopRedTeam extends OpMode {
         lastTime = time;
     }
 
+    // Record a call and report telemetry the calculated calls-per-second over the last few calls.
+    // Make sure you always call this at the beginning of each loop in doAuton()
+    void displayFPS(String label) {
+
+        // Get current timestamp:
+        double now = time;
+        double fps = 0.0;
+        timestamps.addLast(now);
+
+        // Keep only the last maxSamples timestamps
+        if (timestamps.size() > FPS_SAMPLES) {
+            timestamps.removeFirst();
+        }
+
+        // Calculate FPS if there are enough samples
+        if (timestamps.size() == FPS_SAMPLES) {
+            // Calculate rate: (number of calls - 1) / time span
+            double span = timestamps.getLast() - timestamps.getFirst();
+            fps = span > 0 ? (timestamps.size() - 1) / span : 0.0;
+        }
+
+        telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
+    }
+
     // Apply a single rate limit:
     private double applyRateLimit(double desired, double last, double rateLimit){
         // Calculate max allowed increase based on rate limit and passage of time:
         double maxIncrease = (time - lastTime) * rateLimit;
 
         // Allow only that much increase, but instant decrease back to zero:
-        if( last > 0 ){
+        if( last == 0 ){
+            return Math.max(Math.min(desired, last + maxIncrease), last - maxIncrease);
+        }
+        else if( last > 0 ){
             return Math.max(Math.min(desired, last + maxIncrease), 0);
         } else {
             return Math.min(Math.max(desired, last - maxIncrease), 0);
@@ -340,8 +405,8 @@ public class TeleopRedTeam extends OpMode {
         if( prevPower == null ){
             prevPower = 0.0;
         }
-        // Only update motor power if it changed by more than 2%, or stopping:
-        if( Math.abs(power - prevPower) > 0.02 || (power == 0.0 && prevPower != 0.0) ) {
+        // Only update motor power if it changed by more than 1%, or stopping:
+        if( Math.abs(power - prevPower) > 0.01 || (power == 0.0 && prevPower != 0.0) ) {
             motor.setPower(power);
             cachedMotorPowers.put(motor, power);
         }
