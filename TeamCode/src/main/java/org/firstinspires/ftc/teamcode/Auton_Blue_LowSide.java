@@ -59,7 +59,7 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         }
 
         // Step 4: Strafe back to loading zone, while still winding winch
-        while( opModeIsActive() && distances.getRight_mm() > 100 ){
+        while( opModeIsActive() && distances.getRight_mm() > 200 ){
             beginLoop("Step 4 (Strafe Right)");
             strafeAlongWall(Calibration.AUTON_STRAFE_SPEED);
         }

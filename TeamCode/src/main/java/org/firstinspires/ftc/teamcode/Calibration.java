@@ -42,7 +42,7 @@ public final class Calibration {
 
     // LED control values from documentation:
     public static final double LED_OFF    = 0.00;
-    public static final double LED_RED    = 0.27;
+    public static final double LED_RED    = 0.29; // Should be 0.277, but 0.27 wasn't turning on
     public static final double LED_YELLOW = 0.38;
     public static final double LED_GREEN  = 0.50;
     public static final double LED_BLUE   = 0.61;
@@ -50,10 +50,10 @@ public final class Calibration {
     public static final double LED_WHITE  = 0.85;
 
     // LED control setting based on behavior:
-    public static final double LED_WINCH_UP      = LED_OFF;
-    public static final double LED_WINCH_READY   = LED_GREEN;
+//    public static final double LED_WINCH_UP      = LED_OFF;
+//    public static final double LED_WINCH_READY   = LED_GREEN;
     public static final double LED_AIMING        = LED_YELLOW;
-    public static final double LED_READY_TO_FIRE = LED_RED;
+    public static final double LED_READY_TO_FIRE = LED_GREEN;
 
     // Flower Bar positions:
     public static final double FLOWER_BAR_UP = 0.18;

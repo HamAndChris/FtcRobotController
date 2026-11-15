@@ -81,6 +81,11 @@ public class Auton_Blue_HighSide extends Auton_Basic {
             strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
         }
 
+        // backup to wall
+        while( opModeIsActive() && distances.WallDist_mm >15*25.4 ){
+            beginLoop("Step 6 (Strafe Left Again)");
+            drive (-.2, 0, 0);
+        }
         // Step 7: Stop
         drive(0, 0, 0);
 

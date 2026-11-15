@@ -118,6 +118,7 @@ public class TeleopRedTeam extends OpMode {
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
+    double teamLEDColor;
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -148,8 +149,8 @@ public class TeleopRedTeam extends OpMode {
         distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
-
         imu = hardwareMap.get(IMU.class, "imu");
+        teamLEDColor = (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -260,6 +261,16 @@ public class TeleopRedTeam extends OpMode {
             // Just apply game stick inputs
             drive(forwardLimited, rightLimited, rotateLimited);
             angle_integrator = 0;
+
+            // Blink LED for our team alliance, and blink faster when there's 10 seconds left
+            double partial=(time-Math.floor(time));
+            if( time < 110 || (time < 115 && partial > 0.5) || (partial % 0.5 > 0.25) ) {
+                setLED( teamLEDColor );
+            }
+            else {
+                setLED( Calibration.LED_OFF );
+            }
+
         }
 
         /* ************* Winch State Machine *********** */
@@ -296,6 +307,11 @@ public class TeleopRedTeam extends OpMode {
 
         // Track previous loop time for rate calculations:
         lastTime = time;
+    }
+
+    // Helper function to set LED color
+    void setLED(double color){
+        setPositionCached(ledIndicator, color);
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -435,10 +451,13 @@ public class TeleopRedTeam extends OpMode {
 
         // Turn on LED:
         if( aprilSensing.OnTarget ){
-            setPositionCached(ledIndicator, Calibration.LED_READY_TO_FIRE);
+            setLED( Calibration.LED_READY_TO_FIRE );
         }
         else if( aprilSensing.Detected ){
-            setPositionCached(ledIndicator, Calibration.LED_AIMING);
+            setLED( Calibration.LED_AIMING );
+        }
+        else {
+            setLED( teamLEDColor );
         }
     }
 
