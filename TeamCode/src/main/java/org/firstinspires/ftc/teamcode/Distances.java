@@ -1,17 +1,11 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
-import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 
 public class Distances {
     // Settings:
@@ -29,7 +23,6 @@ public class Distances {
     private final AnalogInput laserAnalog1, laserAnalog2;
     private final DistanceSensor distanceLeft, distanceRight;
     private final Telemetry telemetry;
-    private final IMU imu;
 
     // Private variables used for left/right distance sensing:
     private double leftDist_mm = 0, rightDist_mm = 0;
@@ -38,43 +31,13 @@ public class Distances {
 
     // Constructor:
     public Distances(AnalogInput analog1, AnalogInput analog2,
-                           DistanceSensor distLeft, DistanceSensor distRight, IMU theImu,
+                           DistanceSensor distLeft, DistanceSensor distRight,
                            Telemetry theTelemetry){
         laserAnalog1 = analog1;
         laserAnalog2 = analog2;
         distanceLeft = distLeft;
         distanceRight = distRight;
-        imu = theImu;
         telemetry = theTelemetry;
-
-        // Initialize the IMU:
-        // This needs to be changed to match the orientation on your robot
-
-        // // Old "simple orintation" code:
-        // RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-        //         RevHubOrientationOnRobot.LogoFacingDirection.BACKWARD;
-        // RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-        //         RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
-
-        // RevHubOrientationOnRobot orientationOnRobot = new
-        //         RevHubOrientationOnRobot(logoDirection, usbDirection);
-        // imu.initialize(new IMU.Parameters(orientationOnRobot));
-
-        // New IMU orientation reflecting 30-degree back slope:
-        Orientation hubRotation = new Orientation(
-                AxesReference.INTRINSIC,
-                AxesOrder.ZYX,
-                AngleUnit.DEGREES,
-                180,    // Z rotation
-                0,      // Y rotation
-                -120,    // X rotation (-90 - 30)
-                0
-        );
-
-        RevHubOrientationOnRobot orientationOnRobot =
-                new RevHubOrientationOnRobot(hubRotation);
-
-        imu.initialize(new IMU.Parameters(orientationOnRobot));
     }
 
     // Sample the right distance sensor, only if it's been long enough since the last sample.
@@ -113,14 +76,9 @@ public class Distances {
         return getLeft_mm(Calibration.LASER_SAMPLE_RATE);
     }
 
-    // Get the yaw angle from the IMU, inverted so that positive = RIGHT
-    public double getIMUAngle(){
-        return -imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
-    }
-
     // Process the rear sensors and calculate wall angle/distance.
     // (don't read side sensors unless requested since reading I2C is slow)
-    public void processSensors()
+    public void update()
     {
         double distance_mm1, distance_mm2, distanceRight_mm, distanceLeft_mm;
 
@@ -157,7 +115,7 @@ public class Distances {
         distance_mm2 /= FILTER_SIZE;
 
         // Switch between IMU and angle sensors:
-        if(WallAngleValid){
+        //if(WallAngleValid){
             // Calculate angle based on TRIGONOMETRY!!!
             WallAngle_Rads = Math.atan((distance_mm2-distance_mm1) / Calibration.LASER_DISTANCE_WIDTH_MM);
             WallAngle_Deg = WallAngle_Rads * 180 / 3.1415926535897932384626433;
@@ -167,15 +125,15 @@ public class Distances {
             WallDist_mm = hypotenuse * Math.abs(Math.cos(WallAngle_Rads));
 
             wallAngleWhenLastValid = WallAngle_Deg;
-        }
-        else {
-            // Angle sensors not valid. Use IMU dead reckoning instead (angle only)
-            double currentIMU = getIMUAngle();
-            if( lastWallAngleValid ){
-                imuAngleWhenLastValid = currentIMU;
-            }
-            WallAngle_Deg = (currentIMU - imuAngleWhenLastValid) + wallAngleWhenLastValid;
-        }
+//        }
+//        else {
+//            // Angle sensors not valid. Use IMU dead reckoning instead (angle only)
+//            double currentIMU = Localization.getIMUAngle();
+//            if( lastWallAngleValid ){
+//                imuAngleWhenLastValid = currentIMU;
+//            }
+//            WallAngle_Deg = (currentIMU - imuAngleWhenLastValid) + wallAngleWhenLastValid;
+//        }
         lastWallAngleValid = WallAngleValid;
 
         telemetry.addData("Rear Lasers", "%.1f mm, %.1f mm", distance_mm1, distance_mm2);

@@ -29,7 +29,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.lynx.LynxModule;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -41,14 +40,8 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayDeque;
@@ -93,9 +86,11 @@ public class TeleopRedTeam extends OpMode {
     private AprilTagProcessor aprilTag;
     private VisionPortal      visionPortal;
     private AprilSensing      aprilSensing;
+    private Localization      localization;
 
     // Constants:
     private static final double POWER_LEVEL = 1.0; // 1.0 = full speed
+    private static final boolean USE_FIELD_RELATIVE = true;
 
     // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -118,7 +113,7 @@ public class TeleopRedTeam extends OpMode {
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
-    double teamLEDColor;
+    double teamLEDColor, LEDColor;
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -170,17 +165,20 @@ public class TeleopRedTeam extends OpMode {
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intakeMotor1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intakeMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Initialize the distance sensing algorithm:
-        distances = new Distances(laserAnalog1, laserAnalog2,
-                distanceLeft, distanceRight, imu, telemetry);
+        distances = new Distances(laserAnalog1, laserAnalog2, distanceLeft, distanceRight, telemetry);
+
+        // Initialize the IMU and localization algorithm:
+        localization = new Localization(imu, frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, telemetry);
 
         // Initialize the April tag camera:
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
 
-        // 1. Retrieve all connected REV Hubs (Control Hub + Expansion Hub)
+        // Set the control and expansion hub to "bulk read" mode to improve performance
         allHubs = hardwareMap.getAll(LynxModule.class);
-        // 2. Set every hub to MANUAL bulk caching mode
         for (LynxModule hub : allHubs) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         }
@@ -203,7 +201,9 @@ public class TeleopRedTeam extends OpMode {
             hub.clearBulkCache();
         }
         displayFPS(modeString);
-        distances.processSensors();
+        distances.update();
+        localization.update();
+
         // Keep the winch wound when the user initialized the robot
         doWinchStatemachine(false);
         telemetry.update();
@@ -219,58 +219,54 @@ public class TeleopRedTeam extends OpMode {
 
         displayFPS(modeString);
 
-        // Read angle sensors:
-        distances.processSensors();
+        // Read angle sensors and IMU:
+        distances.update();
+        localization.update();
+
+        /* *************** LED Default color ************* */
+
+        // Blink LED for our team alliance, and blink faster when there's 10 seconds left
+        // Note: This may be overwritten by AlineToAprilTag
+        double partial=(time-Math.floor(time));
+        if( time < 110 || (time < 115 && partial > 0.5) || (partial % 0.5 > 0.25) ) {
+            LEDColor = teamLEDColor;
+        }
+        else {
+            LEDColor = Calibration.LED_OFF;
+        }
+
+        /* *************** Chassis Movement Controls *************** */
 
         // Get chassis stick inputs, applying parabolic transform:
         double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * POWER_LEVEL;
         double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
         double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
 
-        // Apply rate limits to smooth out robot motion:
-        forwardLimited = applyRateLimit(forward, forwardLimited, Calibration.STICK_RATE_LIMIT);
-        rightLimited   = applyRateLimit(right,   rightLimited,   Calibration.STICK_RATE_LIMIT);
-        rotateLimited  = applyRateLimit(rotate,  rotateLimited,  Calibration.STICK_RATE_LIMIT);
-
         // Left bumper is now APRIL tag AUTO AIMBOT MODE
         if (gamepad1.left_bumper) {
             // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
-            AlineToAprilTag( !gamepad1.right_bumper );
+            AlineToAprilTag( !gamepad1.right_bumper, forward, right, rotate );
             angle_integrator = 0;
         } 
         else if (gamepad1.right_bumper) {
             // Wall following mode
-            angle_integrator += distances.WallAngle_Deg;
-            double rotatePID = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
-                    + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
-
-            double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm)
-                    * Calibration.LASER_DIST_GAIN_P;
-            // Limit forward PID to low power:
-            forwardPID = Math.max(Math.min(forwardPID, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER);
-            
-            // Correct forward/right ratio with trigonometry to keep moving straight along the wall:
-            double rightCorrected = rightLimited * Math.cos(distances.WallAngle_Rads);
-            forwardPID += rightLimited * Math.sin(distances.WallAngle_Rads);
-
-            drive(forwardPID, rightCorrected, rotatePID);
-            telemetry.addData("Forward PID", "%.2f", forwardPID);
-            telemetry.addData("Rotate PID", "%.2f", rotatePID);
+            strafeAlongWall(right);
         } 
         else {
-            // Just apply game stick inputs
-            drive(forwardLimited, rightLimited, rotateLimited);
-            angle_integrator = 0;
-
-            // Blink LED for our team alliance, and blink faster when there's 10 seconds left
-            double partial=(time-Math.floor(time));
-            if( time < 110 || (time < 115 && partial > 0.5) || (partial % 0.5 > 0.25) ) {
-                setLED( teamLEDColor );
+            // No bumpers being pressed.
+            if( gamepad1.right_stick_button ){
+                // If right stick button is pressed, reset the IMU.
+                localization.resetYaw();
+            }
+            // Apply gamepad inputs:
+            if( USE_FIELD_RELATIVE ){
+                localization.translateToFieldRelative(forward, right, rotate);
+                drive(localization.newForward, localization.newRight, localization.newRotate);
             }
             else {
-                setLED( Calibration.LED_OFF );
+                drive(forward, right, rotate);
             }
-
+            angle_integrator = 0;
         }
 
         /* ************* Winch State Machine *********** */
@@ -302,16 +298,14 @@ public class TeleopRedTeam extends OpMode {
         }
         //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
 
+        // Send LED value:
+        setPositionCached(ledIndicator, LEDColor);
+
         // Send all telemetry to driver station:
         telemetry.update();
 
         // Track previous loop time for rate calculations:
         lastTime = time;
-    }
-
-    // Helper function to set LED color
-    void setLED(double color){
-        setPositionCached(ledIndicator, color);
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -443,21 +437,36 @@ public class TeleopRedTeam extends OpMode {
     }
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
-    void AlineToAprilTag(boolean display_only) {
-        aprilSensing.performSensing();
-        if( !display_only ){
+    void AlineToAprilTag(boolean display_only, double forward, double right, double rotate) {
+        if( USE_FIELD_RELATIVE ){
+            // For field relative mode, make sure we are translating into field relative commands
+            // before sending to performSensing, because it will sometimes allow 'right' command through:
+            localization.translateToFieldRelative(forward, right, rotate);
+            forward = localization.newForward;
+            right = localization.newRight;
+            rotate = localization.newRotate;
+        }
+
+        // Perform the sensing
+        aprilSensing.performSensing(forward, right, rotate);
+        if( display_only ){
+            // Display only mode, pass through original commands.
+            drive(forward, right, rotate);
+        }
+        else {
+            // Alignment mode. Pass through the alignment algorithm:
             drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate);
         }
 
         // Turn on LED:
         if( aprilSensing.OnTarget ){
-            setLED( Calibration.LED_READY_TO_FIRE );
+            LEDColor = Calibration.LED_READY_TO_FIRE;
         }
         else if( aprilSensing.Detected ){
-            setLED( Calibration.LED_AIMING );
+            LEDColor = Calibration.LED_AIMING;
         }
         else {
-            setLED( teamLEDColor );
+            LEDColor = teamLEDColor;
         }
     }
 
@@ -469,6 +478,29 @@ public class TeleopRedTeam extends OpMode {
         return gp != null && gp.id != Gamepad.ID_UNASSOCIATED;
     }
 
+    // Apply motor torques to follow the wall at the desired strafing speed
+    void strafeAlongWall(double right)
+    {
+        // Calculate angle PI control loop:
+        angle_integrator += distances.WallAngle_Deg;
+        double rotatePID = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
+                + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
+
+        // Calculate distance P control loop:
+        double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm)
+                * Calibration.LASER_DIST_GAIN_P;
+        // Limit forward PID to low power:
+        forwardPID = Math.max(Math.min(forwardPID, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER);
+
+        // Correct forward/right ratio with trigonometry to keep moving straight along the wall:
+        double rightCorrected = right * Math.cos(distances.WallAngle_Rads);
+        forwardPID += right * Math.sin(distances.WallAngle_Rads);
+
+        drive(forwardPID, rightCorrected, rotatePID);
+        telemetry.addData("Forward PID", "%.2f", forwardPID);
+        telemetry.addData("Rotate PID", "%.2f", rotatePID);
+    }
+
     // This routine drives the robot field relative
     private void driveFieldRelative(double forward, double right, double rotate) {
         // First, convert direction being asked to drive to polar coordinates
@@ -476,8 +508,7 @@ public class TeleopRedTeam extends OpMode {
         double r = Math.hypot(right, forward);
 
         // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta -
-                imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
+        theta = AngleUnit.normalizeRadians(theta - localization.getYawRadians());
 
         // Third, convert back to Cartesian
         double newForward = r * Math.sin(theta);
@@ -488,24 +519,23 @@ public class TeleopRedTeam extends OpMode {
     }
 
     // Thanks to FTC16072 for sharing this code!!
-    public void drive(double forward, double right, double rotate) {
-
+    public void drive(double forward, double right, double rotate)
+    {
         double maxPower = 1;
         double maxSpeed = 1;  // make this slower for outreaches
-//        if (gamepad1.right_bumper) {
-//            maxPower = 0.6;
-//            maxSpeed = 0.6;
-//            forward = forward * 0.3;
-//            right = right * 0.6;
-//            //rotate = rotate * 0.4;
-//        }
+
+
+        // Apply rate limits to smooth out robot motion:
+        forwardLimited = applyRateLimit(forward, forwardLimited, Calibration.STICK_RATE_LIMIT);
+        rightLimited   = applyRateLimit(right,   rightLimited,   Calibration.STICK_RATE_LIMIT);
+        rotateLimited  = applyRateLimit(rotate,  rotateLimited,  Calibration.STICK_RATE_LIMIT);
 
         // This calculates the power needed for each wheel based on the amount of forward,
         // strafe right, and rotate
-        double frontLeftPower = forward + right + rotate;
-        double frontRightPower = forward - right - rotate;
-        double backRightPower = forward + right - rotate;
-        double backLeftPower = forward - right + rotate;
+        double frontLeftPower = forwardLimited + rightLimited + rotateLimited;
+        double frontRightPower = forwardLimited - rightLimited - rotateLimited;
+        double backRightPower = forwardLimited + rightLimited - rotateLimited;
+        double backLeftPower = forwardLimited - rightLimited + rotateLimited;
 
 
         // This is needed to make sure we don't pass > 1.0 to any wheel

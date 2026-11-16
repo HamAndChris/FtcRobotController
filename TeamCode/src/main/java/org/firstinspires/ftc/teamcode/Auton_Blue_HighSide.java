@@ -69,10 +69,10 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         }
 
         // Step 5: Rotate 90 degrees to the right, so dual distance sensors face the left wall
-        imu.resetYaw();
-        while( opModeIsActive() && distances.getIMUAngle() < 90 ){
+        localization.resetYaw();
+        while( opModeIsActive() && localization.getClockwiseAngle() < 90 ){
             beginLoop("Step 5 (Turn Right)");
-            drive(0, -Calibration.AUTON_STRAFE_SPEED, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing left
+            drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing left
         }
 
         // Step 6: Strafe along left wall until we're 1 meter from the far wall

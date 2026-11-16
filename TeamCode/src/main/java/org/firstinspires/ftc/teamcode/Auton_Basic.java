@@ -41,8 +41,6 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -83,6 +81,7 @@ public class Auton_Basic extends LinearOpMode {
     AprilTagProcessor aprilTag;
     AprilSensing      aprilSensing;
     Distances         distances;
+    Localization      localization;
 
     // Winch state machine variables:
     enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -153,7 +152,10 @@ public class Auton_Basic extends LinearOpMode {
 
         // Initialize the distance sensing algorithm:
         distances = new Distances(laserAnalog1, laserAnalog2,
-                distanceLeft, distanceRight, imu, telemetry);
+                distanceLeft, distanceRight, telemetry);
+
+        // Initialize the IMU and localization algorithm:
+        localization = new Localization(imu, frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, telemetry);
 
         // Initialize the APRIL tag sensing / webcam
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
@@ -222,8 +224,9 @@ public class Auton_Basic extends LinearOpMode {
 
         telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
 
-        // Update the laser sensors here, since we always want the moving average running:
-        distances.processSensors();
+        // Update the odometry and laser sensors here since we always want the moving averages running:
+        distances.update();
+        localization.update();
 
         // Also process the winch state machine since we always want to keep its control loop active:
         doWinchStatemachine(false, false);
@@ -234,7 +237,7 @@ public class Auton_Basic extends LinearOpMode {
     // NOTE: IMU reading wraps around at 180 degrees, so never exceed that and always call imu.reset() beforehand
     boolean rotateToIMUAngle(double targetAngle, double right, double forward)
     {
-        double currentAngle = distances.getIMUAngle();
+        double currentAngle = localization.getClockwiseAngle();
         // Apply rotation control loop:
         double rotate = (targetAngle - currentAngle) * Calibration.AUTON_ANGLE_GAIN_P;
         drive(forward, right, rotate);
@@ -259,7 +262,7 @@ public class Auton_Basic extends LinearOpMode {
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag() {
-        aprilSensing.performSensing();
+        aprilSensing.performSensing(0, 0, 0);
         drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate); 
         if( aprilSensing.OnTarget ){
             setPositionCached(ledIndicator, Calibration.LED_READY_TO_FIRE);

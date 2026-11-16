@@ -11,7 +11,7 @@ public final class Calibration {
     private Calibration() {}
 
     // Winch control calibrations:
-    public static final int WINCH_LAUNCH_AMOUNT = 1500; // Encoder ticks to fire the winch
+    public static final int    WINCH_LAUNCH_AMOUNT = 1500; // Encoder ticks to fire the winch
     public static final double WINCH_HOLDING_FEEDFORWARD = 0.15; // Holding motor power
     public static final double WINCH_HOLDING_GAIN_P = 0.001; // Motor holding proportional gain
 
@@ -63,7 +63,11 @@ public final class Calibration {
     // Calculate the COUNTS_PER_INCH for your specific drive train.
     public static final double WHEEL_DIAMETER_INCHES  = 4.094; // For figuring circumference
     public static final double COUNTS_PER_OUTPUT_REV  = 537.7; // From datasheet
-    public static final double COUNTS_PER_INCH        = (COUNTS_PER_OUTPUT_REV) /
-                                                       (WHEEL_DIAMETER_INCHES * 3.1415);
+    public static final double COUNTS_PER_INCH        = (COUNTS_PER_OUTPUT_REV)
+                                                            / (WHEEL_DIAMETER_INCHES * 3.1415);
+    public static final double MOTOR_MAX_SPEED_RPM    = 312; // From datasheet
+    public static final double MAX_SPEED_INCHES_PER_S = (MOTOR_MAX_SPEED_RPM / 60)
+                                                            * (WHEEL_DIAMETER_INCHES * 3.1415);
+
 }
 
