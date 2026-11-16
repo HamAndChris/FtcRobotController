@@ -41,7 +41,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+import org.firstinspires.ftc.teamcode.AprilSensing;
 
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;

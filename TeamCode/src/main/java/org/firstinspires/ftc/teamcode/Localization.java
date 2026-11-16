@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
@@ -22,12 +23,12 @@ public class Localization {
     double newForward, newRight, newRotate;
 
     public Localization(HardwareMap hardwareMap, Telemetry telemetry){
-        frontLeftDrive  = hardwareMap.get(DcMotor.class, "FrontLeft");
-        frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
-        backLeftDrive   = hardwareMap.get(DcMotor.class, "BackLeft");
-        backRightDrive  = hardwareMap.get(DcMotor.class, "BackRight");
-        imu             = hardwareMap.get(IMU.class, "imu");
-        this.telemetry  = telemetry;
+        frontLeft  = hardwareMap.get(DcMotor.class, "FrontLeft");
+        frontRight = hardwareMap.get(DcMotor.class, "FrontRight");
+        backLeft   = hardwareMap.get(DcMotor.class, "BackLeft");
+        backRight  = hardwareMap.get(DcMotor.class, "BackRight");
+        imu        = hardwareMap.get(IMU.class, "imu");
+        this.telemetry = telemetry;
 
         // Initialize the IMU:
 
