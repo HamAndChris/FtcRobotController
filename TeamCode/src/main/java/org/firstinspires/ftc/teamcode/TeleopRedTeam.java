@@ -40,6 +40,8 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -135,16 +137,9 @@ public class TeleopRedTeam extends OpMode {
         frontLeftDrive = hardwareMap.get(DcMotor.class, "FrontLeft");
         frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
         backLeftDrive = hardwareMap.get(DcMotor.class, "BackLeft");
-        backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");        // Map the analog device from the hardware configuration
-
-        laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
-        laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
-
-        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
-        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
+        backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
-        imu = hardwareMap.get(IMU.class, "imu");
         teamLEDColor = (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
 
         // We set the left motors in reverse which is needed for drive trains where the left
@@ -167,12 +162,13 @@ public class TeleopRedTeam extends OpMode {
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intakeMotor1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intakeMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        winchMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Initialize the distance sensing algorithm:
-        distances = new Distances(laserAnalog1, laserAnalog2, distanceLeft, distanceRight, telemetry);
+        distances = new Distances(hardwareMap, telemetry);
 
         // Initialize the IMU and localization algorithm:
-        localization = new Localization(imu, frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, telemetry);
+        localization = new Localization(hardwareMap, telemetry);
 
         // Initialize the April tag camera:
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
@@ -246,7 +242,6 @@ public class TeleopRedTeam extends OpMode {
         if (gamepad1.left_bumper) {
             // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
             AlineToAprilTag( !gamepad1.right_bumper, forward, right, rotate );
-            angle_integrator = 0;
         } 
         else if (gamepad1.right_bumper) {
             // Wall following mode
@@ -266,7 +261,6 @@ public class TeleopRedTeam extends OpMode {
             else {
                 drive(forward, right, rotate);
             }
-            angle_integrator = 0;
         }
 
         /* ************* Winch State Machine *********** */
@@ -481,22 +475,19 @@ public class TeleopRedTeam extends OpMode {
     // Apply motor torques to follow the wall at the desired strafing speed
     void strafeAlongWall(double right)
     {
-        // Calculate angle PI control loop:
-        angle_integrator += distances.WallAngle_Deg;
-        double rotatePID = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P)
-                + angle_integrator * -Calibration.LASER_ANGLE_GAIN_I;
+        // Calculate angle P control loop:
+        double rotatePID = (distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P);
+        rotatePID = Math.min(Math.max(rotatePID, -Calibration.LASER_ANGLE_MAXPOWER), Calibration.LASER_ANGLE_MAXPOWER); // Limit to maximum rotation command
 
         // Calculate distance P control loop:
-        double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm)
-                * Calibration.LASER_DIST_GAIN_P;
-        // Limit forward PID to low power:
-        forwardPID = Math.max(Math.min(forwardPID, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER);
+        double forwardPID = (Calibration.LASER_TARGET_DIST_MM - distances.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
+        forwardPID = Math.max(Math.min(forwardPID, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER); // Limit to maximum forward command
 
         // Correct forward/right ratio with trigonometry to keep moving straight along the wall:
-        double rightCorrected = right * Math.cos(distances.WallAngle_Rads);
-        forwardPID += right * Math.sin(distances.WallAngle_Rads);
+        double rightCorrected = right * Math.cos(distances.WallAngle_Rads) - forwardPID * Math.sin(distances.WallAngle_Rads);
+        double forwardCorrected = forwardPID * Math.cos(distances.WallAngle_Rads) + right * Math.sin(distances.WallAngle_Rads);
 
-        drive(forwardPID, rightCorrected, rotatePID);
+        drive(forwardCorrected, rightCorrected, rotatePID);
         telemetry.addData("Forward PID", "%.2f", forwardPID);
         telemetry.addData("Rotate PID", "%.2f", rotatePID);
     }

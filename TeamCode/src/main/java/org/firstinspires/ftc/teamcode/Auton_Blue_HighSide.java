@@ -43,7 +43,7 @@ public class Auton_Blue_HighSide extends Auton_Basic {
     public void doAuton()
     {
         // Step 1: move forward a few inches
-        while(opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3) {
+        while(opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
         }
@@ -62,10 +62,11 @@ public class Auton_Blue_HighSide extends Auton_Basic {
             beginLoop("Step 3 (Launch)");
         }
 
-        // Step 4: Strafe left until we're 1 meter from the wall
+        // Step 4: Strafe left from current wall distance until we're 1 meter from the wall
+        double startingWallDist = distances.WallDist_inches;
         while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
             beginLoop("Step 4 (Strafe Left)");
-            strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
+            strafeAlongWall(startingWallDist, -Calibration.AUTON_STRAFE_SPEED);
         }
 
         // Step 5: Rotate 90 degrees to the right, so dual distance sensors face the left wall
@@ -78,14 +79,15 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         // Step 6: Strafe along left wall until we're 1 meter from the far wall
         while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
             beginLoop("Step 6 (Strafe Left Again)");
-            strafeAlongWall(-Calibration.AUTON_STRAFE_SPEED);
+            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
         }
 
-        // backup to wall
-        while( opModeIsActive() && distances.WallDist_mm >15*25.4 ){
-            beginLoop("Step 6 (Strafe Left Again)");
-            drive (-.2, 0, 0);
+        // Step 7: backup to wall and hold wall distance in case we get bumped
+        while( opModeIsActive() ){
+            beginLoop("Step 7 (Park)");
+            strafeAlongWall(Calibration.AUTON_PARKING_REAR_DIST, 0);
         }
+
         // Step 7: Stop
         drive(0, 0, 0);
 

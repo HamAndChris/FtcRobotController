@@ -39,32 +39,50 @@ public class Auton_Blue_LowSide extends Auton_Basic {
     public void doAuton() 
     {
         // Step 1 move forward a few inches
-        while( opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
+        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
         }
         drive(0, 0, 0);
 
         // step 2 line up to April Tag while winding winch, waiting up to 23 seconds for it to tip our way
-        while( opModeIsActive() && runtime.seconds() < 23 && !aprilSensing.OnTarget ) {
+        while( opModeIsActive() && runtime.seconds() < 23 ) {
             beginLoop("Step 2 (Aimbot)");
             AlineToAprilTag();
+            if( aprilSensing.OnTarget ){
+                // Successfully aligned to april tag. Fire away!
+                launchCatapult();
+                // Break out of loop:
+                break;
+            }
         }
-
-        // Step 3: Fire winch (timeout 2 seconds)
-        launchCatapult();
         drive(0, 0, 0);
+
+        // Wait for catapult to finish launching (if it is)
         while( opModeIsActive() && waitingForLaunch() ) {
             beginLoop("Step 3 (Launch)");
         }
 
-        // Step 4: Strafe back to loading zone, while still winding winch
-        while( opModeIsActive() && distances.getRight_mm() > 200 ){
+        // Step 4: Strafe back to loading zone, while winding winch.
+        while( opModeIsActive() && distances.getRight_inches() > 16 ){
             beginLoop("Step 4 (Strafe Right)");
-            strafeAlongWall(Calibration.AUTON_STRAFE_SPEED);
+            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, Calibration.AUTON_STRAFE_SPEED);
         }
 
-        // Step 5: Stop
+        // Step 5: Rotate 90 left so our back is to the wall
+        localization.resetYaw();
+        while( opModeIsActive() && localization.getClockwiseAngle() > -90 ){
+            beginLoop("Step 5 (Turn Left)");
+            drive(0, 0, -Calibration.AUTON_ROTATE_SPEED);
+        }
+
+        // Step 6: backup to wall and hold wall distances in case we get bumped
+        while( opModeIsActive() ){
+            beginLoop("Step 6 (Park)");
+            holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 12);
+        }
+
+        // Done. Stop motors.
         drive(0, 0, 0);
 
         telemetry.addData("Autonomy", "Complete");

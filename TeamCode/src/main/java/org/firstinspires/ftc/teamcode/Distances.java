@@ -13,7 +13,7 @@ public class Distances {
     private double[][] distanceSamples = new double[4][FILTER_SIZE];
     // State variables
     public double WallAngle_Deg = 0, WallAngle_Rads = 0;
-    public double WallDist_mm = 0;
+    public double WallDist_mm = 0, WallDist_inches = 0;
     private static final double MAX_VOLTS = 3.3 * 800/1000;
     private static final double MAX_DISTANCE_MM = 1000.0;
     private static final double VALID_WALL_DISTANCE_MM = 9900.0; // Disabled by setting high
@@ -30,14 +30,13 @@ public class Distances {
     private final ElapsedTime runtime = new ElapsedTime();
 
     // Constructor:
-    public Distances(AnalogInput analog1, AnalogInput analog2,
-                           DistanceSensor distLeft, DistanceSensor distRight,
-                           Telemetry theTelemetry){
-        laserAnalog1 = analog1;
-        laserAnalog2 = analog2;
-        distanceLeft = distLeft;
-        distanceRight = distRight;
-        telemetry = theTelemetry;
+    public Distances(HardwareMap hardwareMap, Telemetry telemetry)
+    {
+        laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
+        laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
+        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
+        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
+        this.telemetry = telemetry;
     }
 
     // Sample the right distance sensor, only if it's been long enough since the last sample.
@@ -49,6 +48,10 @@ public class Distances {
         if( now - lastRightSample >= samplePeriod ){
             lastRightSample = now;
             rightDist_mm = distanceRight.getDistance(DistanceUnit.MM);
+            // Correct for wall angle:
+            if( WallAngleValid ){
+                rightDist_mm = rightDist_mm * Math.cos(WallAngle_Rads);
+            }
         }
         telemetry.addData("Right Laser", "%.1f mm", rightDist_mm);
         return rightDist_mm;
@@ -63,6 +66,10 @@ public class Distances {
         if( now - lastLeftSample >= samplePeriod ){
             lastLeftSample = now;
             leftDist_mm = distanceLeft.getDistance(DistanceUnit.MM);
+            // Correct for wall angle:
+            if( WallAngleValid ){
+                leftDist_mm = leftDist_mm * Math.cos(WallAngle_Rads);
+            }
         }
         telemetry.addData("Left Laser", "%.1f mm", leftDist_mm);
         return leftDist_mm;
@@ -74,6 +81,12 @@ public class Distances {
     }
     public double getLeft_mm(){
         return getLeft_mm(Calibration.LASER_SAMPLE_RATE);
+    }
+    public double getRight_inches(){
+        return getRight_mm() / 25.4;
+    }
+    public double getLeft_inches(){
+        return getLeft_mm() / 25.4;
     }
 
     // Process the rear sensors and calculate wall angle/distance.
@@ -120,9 +133,10 @@ public class Distances {
             WallAngle_Rads = Math.atan((distance_mm2-distance_mm1) / Calibration.LASER_DISTANCE_WIDTH_MM);
             WallAngle_Deg = WallAngle_Rads * 180 / 3.1415926535897932384626433;
 
-            // Use trigonometry again to correct true wall distance from center of robot
-            double hypotenuse = (distance_mm1 + distance_mm2)/2 + 9*25.4;
+            // Use trigonometry again to correct true wall distance from center of rear bumper (NOT center of robot)
+            double hypotenuse = (distance_mm1 + distance_mm2)/2;
             WallDist_mm = hypotenuse * Math.abs(Math.cos(WallAngle_Rads));
+            WallDist_inches = WallDist_mm / 25.4;
 
             wallAngleWhenLastValid = WallAngle_Deg;
 //        }
@@ -137,6 +151,6 @@ public class Distances {
         lastWallAngleValid = WallAngleValid;
 
         telemetry.addData("Rear Lasers", "%.1f mm, %.1f mm", distance_mm1, distance_mm2);
-        telemetry.addData("Wall", "%.1f mm, %.1f deg", WallDist_mm, WallAngle_Deg);
+        telemetry.addData("Wall", "%.1f mm / %.1f inch, %.1f deg", WallDist_mm, WallDist_inches, WallAngle_Deg);
     }
 }

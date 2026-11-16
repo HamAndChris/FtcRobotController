@@ -13,7 +13,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 public class Localization {
-    public Pose2D pose;
+    public Pose2D pose = new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0);
     Telemetry telemetry;
     DcMotor frontLeft, frontRight, backLeft, backRight;
     IMU imu;
@@ -21,14 +21,13 @@ public class Localization {
     // Used for outputs:
     double newForward, newRight, newRotate;
 
-    public Localization(IMU imu, DcMotor fl, DcMotor fr, DcMotor bl, DcMotor br, Telemetry tel) {
-        pose = new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0);
-        frontLeft = fl;
-        frontRight = fr;
-        backLeft = bl;
-        backRight = br;
-        this.imu = imu;
-        telemetry = tel;
+    public Localization(HardwareMap hardwareMap, Telemetry telemetry){
+        frontLeftDrive  = hardwareMap.get(DcMotor.class, "FrontLeft");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
+        backLeftDrive   = hardwareMap.get(DcMotor.class, "BackLeft");
+        backRightDrive  = hardwareMap.get(DcMotor.class, "BackRight");
+        imu             = hardwareMap.get(IMU.class, "imu");
+        this.telemetry  = telemetry;
 
         // Initialize the IMU:
 
@@ -57,6 +56,7 @@ public class Localization {
                 new RevHubOrientationOnRobot(hubRotation);
 
         imu.initialize(new IMU.Parameters(orientationOnRobot));
+        imu.resetYaw();
     }
 
     public void translateToFieldRelative(double forward, double right, double rotate)

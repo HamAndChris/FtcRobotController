@@ -41,6 +41,8 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import main.java.org.firstinspires.ftc.teamcode.AprilSensing;
+
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -57,7 +59,7 @@ import java.util.List;
  * Other Autonomous modes can extend this class and override the "doAuton" function.
 */
 
-@Autonomous(name="Basic", group="Robot")
+@Autonomous(name="Basic: Slide Right", group="Robot")
 public class Auton_Basic extends LinearOpMode {
 
     // Hardware objects:
@@ -115,17 +117,12 @@ public class Auton_Basic extends LinearOpMode {
         frontRightDrive = hardwareMap.get(DcMotor.class, "FrontRight");
         backLeftDrive = hardwareMap.get(DcMotor.class, "BackLeft");
         backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");
-        laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
-        laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
-        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
-        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
         magnetSensor = hardwareMap.get(DigitalChannel.class, "MagSensor");
         intakeMotor1 = hardwareMap.get(DcMotor.class, "IntakeMotor");
         intakeMotor2 = hardwareMap.get(DcMotor.class, "IntakeMotor2");
         winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
-        imu = hardwareMap.get(IMU.class, "imu");
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -149,13 +146,13 @@ public class Auton_Basic extends LinearOpMode {
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        winchMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Initialize the distance sensing algorithm:
-        distances = new Distances(laserAnalog1, laserAnalog2,
-                distanceLeft, distanceRight, telemetry);
+        distances = new Distances(hardwareMap, telemetry);
 
         // Initialize the IMU and localization algorithm:
-        localization = new Localization(imu, frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, telemetry);
+        localization = new Localization(hardwareMap, telemetry);
 
         // Initialize the APRIL tag sensing / webcam
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
@@ -179,14 +176,32 @@ public class Auton_Basic extends LinearOpMode {
     // without repeating all the setup code.
     public void doAuton()
     {
-        // Step 1 move forward three inches
-        while( opModeIsActive() && distances.WallDist_mm < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
+        // Step 1 move forward 6 inches
+        while( opModeIsActive() && distances.WallDist_inches < 6 && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Moving Forward)");
-            doWinchStatemachine(false, false);
             drive(0.2, 0, 0);
         }
+        
+        // Step 2 slide right until we're 24 inches from the wall, then hold there so we don't get pushed out of the box
+        while( opModeIsActive() ) {
+            beginLoop("Step 2 (Parking)");
+            double right;
+            if( distances.getLeft_inches() < 22 ){
+                // Too far left, strafe right.
+                right = 0.2;
+            }
+            else if( distances.getLeft_inches() > 26 ){
+                // Too far right, strafe left.
+                right = -0.2;
+            }
+            else {
+                // Close enough, just hold position.
+                right = 0;
+            }
+            strafeAlongWall(right);
+        }
 
-        // Step 2: Stop
+        // Op mode completed. Make sure to zero out motor commands:
         drive(0, 0, 0);
 
         telemetry.addData("Autonomy", "Complete");
@@ -248,16 +263,29 @@ public class Auton_Basic extends LinearOpMode {
 
 
     // Apply motor torques to follow the wall at the desired strafing speed
-    void strafeAlongWall(double rightSpeed)
+    void strafeAlongWall(double wallDist_inches, double rightSpeed)
     {
         // Apply rotation control loop:
         double rotate = distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
-        // Correct forward/right ratio to keep moving straight along wall:
-        double right = rightSpeed * Math.cos(distances.WallAngle_Rads);
-        double forward = rightSpeed * Math.sin(distances.WallAngle_Rads);
+        rotate = Math.min(Math.max(rotate, -Calibration.LASER_ANGLE_MAXPOWER), Calibration.LASER_ANGLE_MAXPOWER); // Limit to maximum forward command
+
         // Apply distance control loop:
-        forward += (Calibration.AUTON_STRAFE_DIST - distances.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
-        drive(forward, right, rotate);
+        double forward = (wallDist_inches*25.4 - distances.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;
+        forward = Math.min(Math.max(forward, -Calibration.LASER_DIST_MAXPOWER), Calibration.LASER_DIST_MAXPOWER); // Limit to maximum forward command
+
+        // Correct forward/right ratio to keep moving straight along wall:
+        double newRight = rightSpeed * Math.cos(distances.WallAngle_Rads) - forward * Math.sin(distances.WallAngle_Rads);
+        double newForward = forward * Math.cos(distances.WallAngle_Rads) + rightSpeed * Math.sin(distances.WallAngle_Rads);
+        drive(newForward, newRight, rotate);
+    }
+
+    // Apply motor torques to hold the desired distance from rear wall and left distance sensor
+    void holdPositionLeft(double wallDist_inches, double leftDist_inches)
+    {
+        double right = (leftDist_inches*25.4 - distances.getLeft_mm()) * Calibration.LASER_DIST_GAIN_P;
+        right = Math.min(Math.max(right, -Calibration.LASER_DIST_MAXPOWER), Calibration.LASER_DIST_MAXPOWER); // Limit to max left/right command
+
+        strafeAlongWall(wallDist_inches, right);
     }
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
