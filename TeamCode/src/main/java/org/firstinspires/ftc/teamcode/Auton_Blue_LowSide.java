@@ -77,16 +77,13 @@ public class Auton_Blue_LowSide extends Auton_Basic {
         }
 
         // Step 6: backup to wall and hold wall distances in case we get bumped
-        while( opModeIsActive() ){
+        // But stop at 30 seconds to avoid penalties
+        while( opModeIsActive() && runtime.seconds() < 30 ){
             beginLoop("Step 6 (Park)");
             holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 12);
         }
 
-        // Done. Stop motors.
-        drive(0, 0, 0);
-
-        telemetry.addData("Autonomy", "Complete");
-        telemetry.update();
-        sleep(1000);  // pause to display final telemetry message.
+        // Done! Now Auton_Basic.java will take over and disable drives and LED
+        return;
     }
 }

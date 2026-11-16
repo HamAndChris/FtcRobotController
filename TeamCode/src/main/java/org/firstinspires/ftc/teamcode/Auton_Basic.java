@@ -93,7 +93,9 @@ public class Auton_Basic extends LinearOpMode {
     // Other variables:
     final ElapsedTime runtime = new ElapsedTime();
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
-    private double lastLaunchCommand = 0;
+    private double lastLaunchCommand = 0;  // Timestamp used for launchCatapult()
+    private double lastMisalignedTime = 0; // Timestamp used for rotateToIMUAngle()
+    double teamLEDColor;
 
     // FPS profiling:
     private final Deque<Double> timestamps = new ArrayDeque<>();
@@ -123,6 +125,7 @@ public class Auton_Basic extends LinearOpMode {
         winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
+        teamLEDColor = (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -157,8 +160,9 @@ public class Auton_Basic extends LinearOpMode {
         // Initialize the APRIL tag sensing / webcam
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
 
-        // Wait for the game to start (driver presses START)
-        //waitForStart();
+        // Set the team LED color:
+        setLED(teamLEDColor);
+
 
         // Keep the winch wound while we wait for user to press START:
         while( opModeInInit() ){
@@ -170,6 +174,14 @@ public class Auton_Basic extends LinearOpMode {
 
         // Call the doAuton function, which will be overridden by other auton modes:
         doAuton();
+        
+        // After all steps complete, make sure to stop and turn off the LED:
+        drive(0, 0, 0);
+        setLED(Calibration.LED_OFF);
+
+        telemetry.addData("Autonomy", "Complete");
+        telemetry.update();
+        sleep(1000);  // pause to display final telemetry message.
     }
 
     // Function that performs the desired autonomous tasks. Override this to create new autons
@@ -177,36 +189,18 @@ public class Auton_Basic extends LinearOpMode {
     public void doAuton()
     {
         // Step 1 move forward 6 inches
-        while( opModeIsActive() && distances.WallDist_inches < 6 && runtime.seconds() < 3 ) {
+        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_PARKING_REAR_DIST && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Moving Forward)");
             drive(0.2, 0, 0);
         }
         
         // Step 2 slide right until we're 24 inches from the wall, then hold there so we don't get pushed out of the box
-        while( opModeIsActive() ) {
+        while( opModeIsActive() && runtime.seconds() < 30 ) {
             beginLoop("Step 2 (Parking)");
-            double right;
-            if( distances.getLeft_inches() < 22 ){
-                // Too far left, strafe right.
-                right = 0.2;
-            }
-            else if( distances.getLeft_inches() > 26 ){
-                // Too far right, strafe left.
-                right = -0.2;
-            }
-            else {
-                // Close enough, just hold position.
-                right = 0;
-            }
-            strafeAlongWall(right);
+            holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 24);
         }
 
-        // Op mode completed. Make sure to zero out motor commands:
-        drive(0, 0, 0);
-
-        telemetry.addData("Autonomy", "Complete");
-        telemetry.update();
-        sleep(1000);  // pause to display final telemetry message.
+        // Done! Now runOpMode() will take over and disable drives and LED 
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -237,7 +231,8 @@ public class Auton_Basic extends LinearOpMode {
             fps = span > 0 ? (timestamps.size() - 1) / span : 0.0;
         }
 
-        telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
+        // Add first lines of telemetry:
+        telemetry.addData(label, "%s, %.2f s, %.1f FPS", teamColor(), now, fps);
 
         // Update the odometry and laser sensors here since we always want the moving averages running:
         distances.update();
@@ -246,6 +241,12 @@ public class Auton_Basic extends LinearOpMode {
         // Also process the winch state machine since we always want to keep its control loop active:
         doWinchStatemachine(false, false);
     }
+
+    // Helper function to set LED color
+    void setLED(double color){
+        setPositionCached(ledIndicator, color);
+    }
+
 
     // Helper to rotate the robot to a desired angle (positive = RIGHT), while optionally strafing and driving.
     // Returns true when angle has been achieved.
@@ -257,8 +258,12 @@ public class Auton_Basic extends LinearOpMode {
         double rotate = (targetAngle - currentAngle) * Calibration.AUTON_ANGLE_GAIN_P;
         drive(forward, right, rotate);
 
-        // Return true if the angle is within 3 degrees:
-        return Math.abs(targetAngle - currentAngle) < 3.0;
+        // Return true if the angle is within 2 degrees for 0.5 seconds:
+        double now = runtime.seconds();
+        if( Math.abs(targetAngle - currentAngle) > Calibration.AUTON_ANGLE_THRESH ){
+            lastMisalignedTime = now;
+        }
+        return (now - lastMisalignedTime) >= Calibration.AUTON_ANGLE_SETTLING;
     }
 
 
@@ -267,7 +272,7 @@ public class Auton_Basic extends LinearOpMode {
     {
         // Apply rotation control loop:
         double rotate = distances.WallAngle_Deg * -Calibration.LASER_ANGLE_GAIN_P;
-        rotate = Math.min(Math.max(rotate, -Calibration.LASER_ANGLE_MAXPOWER), Calibration.LASER_ANGLE_MAXPOWER); // Limit to maximum forward command
+        rotate = Math.min(Math.max(rotate, -Calibration.LASER_ANGLE_MAXPOWER), Calibration.LASER_ANGLE_MAXPOWER); // Limit to maximum rotation command
 
         // Apply distance control loop:
         double forward = (wallDist_inches*25.4 - distances.WallDist_mm) * Calibration.LASER_DIST_GAIN_P;

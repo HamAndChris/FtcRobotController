@@ -50,14 +50,20 @@ public class Auton_Blue_HighSide extends Auton_Basic {
         drive(0, 0, 0);
 
         // step 2: line up to April Tag while we wait for hive to tip (or 25 seconds)
-        while( opModeIsActive() && runtime.seconds() < 25 && !aprilSensing.OnTarget ) {
+        while( opModeIsActive() && runtime.seconds() < 25 ) {
             beginLoop("Step 2 (Aimbot)");
             AlineToAprilTag();
+            if( aprilSensing.OnTarget ){
+                // Successfully aligned to april tag. Fire away!
+                launchCatapult();
+                // Break out of loop:
+                break;
+            }
         }
         drive(0, 0, 0);
+        setLED(teamLEDColor); // Reset LED to team color after april alignment
 
-        // Step 3: Fire winch (timeout 2 seconds)
-        launchCatapult();
+        // Step 3: Wait for catapult to finish launching
         while(opModeIsActive() && waitingForLaunch() ) {
             beginLoop("Step 3 (Launch)");
         }
@@ -82,17 +88,13 @@ public class Auton_Blue_HighSide extends Auton_Basic {
             strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
         }
 
-        // Step 7: backup to wall and hold wall distance in case we get bumped
-        while( opModeIsActive() ){
+        // Step 7: backup to wall and hold wall distance in case we get bumped (but stop at 30 sec so no penalties)
+        while( opModeIsActive()  ){
             beginLoop("Step 7 (Park)");
             strafeAlongWall(Calibration.AUTON_PARKING_REAR_DIST, 0);
         }
 
-        // Step 7: Stop
-        drive(0, 0, 0);
-
-        telemetry.addData("Autonomy", "Complete");
-        telemetry.update();
-        sleep(1000);  // pause to display final telemetry message.
+        // Done! Now Auton_Basic.java will take over and disable drives and LED 
+        return;
     }
 }

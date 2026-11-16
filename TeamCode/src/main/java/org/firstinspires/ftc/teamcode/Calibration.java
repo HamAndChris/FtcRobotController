@@ -27,7 +27,6 @@ public final class Calibration {
     // Laser distance sensor calibrations:
     public static final double LASER_DISTANCE_WIDTH_MM = 15.375 * 25.4;
     public static final double LASER_ANGLE_GAIN_P   = 1./800; // Laser angle alignment proportional gain
-    public static final double LASER_ANGLE_GAIN_I   = 0.0;    // Laser angle alignment integral gain
     public static final double LASER_ANGLE_MAXPOWER = 0.5;
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing
     public static final double LASER_DIST_GAIN_P    = 1./500;
@@ -37,9 +36,11 @@ public final class Calibration {
     // Autonomous behavior calibrations:
     public static final double AUTON_STRAFE_SPEED = 0.3;
     public static final double AUTON_ROTATE_SPEED = 0.3;
-    public static final double AUTON_STRAFE_DIST  = 16; // Inches: Distance from center of robot to wall when strafing
-    public static final double AUTON_STEP_1_DIST  = 9; // Inches: How far to come off wall before beginning to look for APRIL tags
-    public static final double AUTON_ANGLE_GAIN_P = 0.3/90; // IMU angle alignment proportional gain
+    public static final double AUTON_STRAFE_DIST  = 16;     // Inches: Distance from center of robot to wall when strafing
+    public static final double AUTON_STEP_1_DIST  = 9;      // Inches: How far to come off wall before beginning to look for APRIL tags
+    public static final double AUTON_ANGLE_GAIN_P = 0.3/90; // Deg: IMU angle alignment proportional gain
+    public static final double AUTON_ANGLE_THRESH = 2.0;    // Deg: IMU angle alignment "done" angle threshold
+    public static final double AUTON_ANGLE_SETTLING = 0.25; // Sec: IMU angle alignment "done" time threshold
     public static final double AUTON_PARKING_REAR_DIST = 6; // Inches: Distance to wall in parking zone at end of autonomy
 
     // LED control values from documentation:
