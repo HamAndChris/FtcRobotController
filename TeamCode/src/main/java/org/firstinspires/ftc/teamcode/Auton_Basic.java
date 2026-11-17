@@ -95,7 +95,6 @@ public class Auton_Basic extends LinearOpMode {
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>(); // For performance improvement
     private double lastLaunchCommand = 0;  // Timestamp used for launchCatapult()
     private double lastMisalignedTime = 0; // Timestamp used for rotateToIMUAngle()
-    double teamLEDColor;
 
     // FPS profiling:
     private final Deque<Double> timestamps = new ArrayDeque<>();
@@ -125,7 +124,6 @@ public class Auton_Basic extends LinearOpMode {
         winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
-        teamLEDColor = (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -161,18 +159,21 @@ public class Auton_Basic extends LinearOpMode {
         aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
 
         // Set the team LED color:
-        setLED(teamLEDColor);
+        setLEDTeamColor();
 
 
-        // Keep the winch wound while we wait for user to press START:
+        /* ********** Keep the winch wound while we wait for user to press START ************ */
+
         while( opModeInInit() ){
             beginLoop("Initialize (Winding)");
         }
 
+
         // Set the elapsed time to zero:
         runtime.reset();
 
-        // Call the doAuton function, which will be overridden by other auton modes:
+        /* *********** Call doAuton, which will be overridden by other auton modes ********** */
+        
         doAuton();
         
         // After all steps complete, make sure to stop and turn off the LED:
@@ -195,12 +196,14 @@ public class Auton_Basic extends LinearOpMode {
         }
         
         // Step 2 slide right until we're 24 inches from the wall, then hold there so we don't get pushed out of the box
+        // But stop at 30 seconds to avoid penalties
         while( opModeIsActive() && runtime.seconds() < 30 ) {
             beginLoop("Step 2 (Parking)");
             holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 24);
         }
 
         // Done! Now runOpMode() will take over and disable drives and LED 
+        return;
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -245,6 +248,9 @@ public class Auton_Basic extends LinearOpMode {
     // Helper function to set LED color
     void setLED(double color){
         setPositionCached(ledIndicator, color);
+    }
+    void setLEDTeamColor(){
+        setLED( (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED );
     }
 
 

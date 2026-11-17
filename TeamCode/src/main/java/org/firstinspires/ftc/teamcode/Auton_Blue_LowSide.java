@@ -57,6 +57,7 @@ public class Auton_Blue_LowSide extends Auton_Basic {
             }
         }
         drive(0, 0, 0);
+        setLEDTeamColor(); // Reset LED to team color after april alignment
 
         // Wait for catapult to finish launching (if it is)
         while( opModeIsActive() && waitingForLaunch() ) {
