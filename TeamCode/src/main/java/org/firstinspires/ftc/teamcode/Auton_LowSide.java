@@ -31,8 +31,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name="Low Side: BLUE", group="Robot")
-public class Auton_Blue_LowSide extends Auton_Basic {
+@Autonomous(name="Low Side", group="Robot")
+public class Auton_LowSide extends Auton_Basic {
 
     // Function that performs the desired autonomous tasks.
     @Override

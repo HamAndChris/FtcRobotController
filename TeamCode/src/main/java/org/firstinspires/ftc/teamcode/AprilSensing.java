@@ -14,7 +14,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 public class AprilSensing {
-    private final String TeamColor;
+    private String TeamColor;
     private AprilTagProcessor aprilTag;
     private VisionPortal visionPortal;
     private Telemetry telemetry;
@@ -54,6 +54,11 @@ public class AprilSensing {
                 .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
                 .addProcessor(aprilTag);
         visionPortal = builder.build();
+    }
+
+    // Switch teams:
+    public void setTeamColor(String teamColor){
+        TeamColor = teamColor;
     }
     
     public void performSensing(double forward, double right, double rotate) {

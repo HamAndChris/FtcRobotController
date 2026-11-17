@@ -31,11 +31,9 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-
-@Autonomous(name="High Side: BLUE", group="Robot")
-public class Auton_Blue_HighSide extends Auton_Basic {
+@Autonomous(name="High Side", group="Robot")
+public class Auton_High_Side extends Auton_Basic {
 
     // Function that performs the desired autonomous tasks. Override this to create new autons
     // without repeating all the setup code.

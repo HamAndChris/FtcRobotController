@@ -43,6 +43,11 @@ public final class Calibration {
     public static final double AUTON_ANGLE_SETTLING = 0.25; // Sec: IMU angle alignment "done" time threshold
     public static final double AUTON_PARKING_REAR_DIST = 6; // Inches: Distance to wall in parking zone at end of autonomy
 
+    // Autonomous motion profiling calibrations:
+    public static final double AUTON_ACCEL     = 1.0;  // Motor speed/sec: How quickly to ramp up/down translational movements
+    public static final double AUTON_THRESHOLD = 0.1;  // inches: Distance for translational movements to be onsidered "at target"
+    public static final double AUTON_ROT_ACCEL = 0.5;  // Motor speed/sec: How quickly to ramp up/down rotational movements
+
     // LED control values from documentation:
     public static final double LED_OFF    = 0.10;
     public static final double LED_RED    = 0.29; // Should be 0.277, but 0.27 wasn't turning on
