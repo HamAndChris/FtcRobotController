@@ -414,6 +414,22 @@ public class Auton_Basic extends LinearOpMode {
             cachedMotorPowers.put(servo, pos);
         }
     }
+
+    // Apply a single rate limit:
+    double applyRateLimit(double desired, double last, double rateLimit, double dt){
+        // Calculate max allowed increase based on rate limit and passage of time:
+        double maxIncrease = dt * rateLimit;
+
+        // Allow only that much increase, but instant decrease back to zero:
+        if( last == 0 ){
+            return Math.max(Math.min(desired, last + maxIncrease), last - maxIncrease);
+        }
+        else if( last > 0 ){
+            return Math.max(Math.min(desired, last + maxIncrease), 0);
+        } else {
+            return Math.min(Math.max(desired, last - maxIncrease), 0);
+        }
+    }
     
     void drive(double forward, double right, double rotate)
     {

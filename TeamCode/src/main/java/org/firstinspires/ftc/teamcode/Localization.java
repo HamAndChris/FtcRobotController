@@ -221,6 +221,24 @@ public class Localization {
         return robotVxInPerSec * Math.sin(heading) + robotVyInPerSec * Math.cos(heading);
     }
 
+    // Calculate the difference in X, Y, and Heading from current location to another one.
+    public Pose2D differenceFrom( Pose2D targetPose ) {
+        return new Pose2D(DistanceUnit.INCH,
+                targetPose.getX(DistanceUnit.INCH) - x,
+                targetPose.getY(DistanceUnit.INCH) - y,
+                AngleUnit.RADIANS,
+                wrapAngle( targetPose.getHeading(AngleUnit.RADIANS) - heading) );
+    }
+
+    // Calculate X/Y distance from current location to another point. Ignores heading.
+    public double distanceFrom( Pose2D targetPose ){
+        Pose2D diff = differenceFrom(targetPose);
+        return Math.sqrt( Math.pow(diff.getX(DistanceUnit.INCH), 2) + Math.pow(diff.getY(DistanceUnit.INCH), 2) );
+    }
+
+
+    // ----------------------- Utilities -----------------------
+
     /** Wrap an angle to (-PI, PI]. */
     private static double wrapAngle(double a) {
         while (a > Math.PI)  a -= 2.0 * Math.PI;
