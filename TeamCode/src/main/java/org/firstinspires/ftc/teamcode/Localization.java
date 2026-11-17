@@ -110,9 +110,8 @@ public class Localization {
     }
 
     // Call this once per loop:
-    public void update(){
-        heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-
+    public void update()
+    {
         int cFl = frontLeft.getCurrentPosition();
         int cFr = frontRight.getCurrentPosition();
         int cBl = backLeft.getCurrentPosition();
@@ -165,6 +164,8 @@ public class Localization {
         robotVxInPerSec = (vFl + vFr + vBl + vBr) / 4.0 * FORWARD_MULTIPLIER;
         robotVyInPerSec = (-vFl + vFr + vBl - vBr) / 4.0 * STRAFE_MULTIPLIER;
         if (dt > 1e-4) omegaRadPerSec = dTheta / dt;
+
+        telemetry.addData("Position (x/y/angle)", "%.1f / %.1f inch / %.1f deg", x, y, getHeadingDeg());
     }
     // ----------------------- Setting the pose -----------------------
 
