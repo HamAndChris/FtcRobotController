@@ -219,12 +219,14 @@ public class TeleopRedTeam extends OpMode {
         distances.update();
         localization.update();
 
-        /* *************** LED Default color ************* */
+        /* *************** LED Team Color / Blinking Logic ************* */
 
         // Blink LED for our team alliance, and blink faster when there's 10 seconds left
         // Note: This may be overwritten by AlineToAprilTag
         double partial=(time-Math.floor(time));
-        if( time < 110 || (time < 115 && partial > 0.5) || (partial % 0.5 > 0.25) ) {
+        if( time < 110
+                || (time < 115 && partial > 0.5)
+                || (time < 120 && partial % 0.5 > 0.25) ) {
             LEDColor = teamLEDColor;
         }
         else {
