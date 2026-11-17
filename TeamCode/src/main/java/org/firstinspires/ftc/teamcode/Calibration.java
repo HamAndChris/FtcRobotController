@@ -44,7 +44,7 @@ public final class Calibration {
     public static final double AUTON_PARKING_REAR_DIST = 6; // Inches: Distance to wall in parking zone at end of autonomy
 
     // LED control values from documentation:
-    public static final double LED_OFF    = 0.00;
+    public static final double LED_OFF    = 0.10;
     public static final double LED_RED    = 0.29; // Should be 0.277, but 0.27 wasn't turning on
     public static final double LED_YELLOW = 0.38;
     public static final double LED_GREEN  = 0.50;
