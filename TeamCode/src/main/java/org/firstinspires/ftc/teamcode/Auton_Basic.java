@@ -401,9 +401,9 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
-    /** Return true if the catapult has finished launching or timed out */
+    /** Return true if the catapult has not finished launching or timed out */
     boolean waitingForLaunch(){
-        return catapultState == CatapultState.LAUNCHING && (runtime.seconds() - lastLaunchCommand) < 2.0;
+        return catapultState == CatapultState.LAUNCHING && (runtime.seconds() - lastLaunchCommand) < Calibration.WINCH_FIRING_LOCKOUT;
     }
     
     // Simplified version of the teleop winch state machine; no unwinding, or recovery from IDLE

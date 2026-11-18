@@ -56,6 +56,8 @@ public final class Calibration {
     public static final double WINCH_HOLDING_FEEDFORWARD = 0.15;
     /** MotorPower/Counts: Motor holding proportional gain */
     public static final double WINCH_HOLDING_GAIN_P = 0.001;
+    /** Seconds: How long after launch commanded to prevent any motion */
+    public static final double WINCH_FIRING_LOCKOUT = 0.5;
 
     // APRIL tag aim-bot calibrations:
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive

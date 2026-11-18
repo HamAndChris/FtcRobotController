@@ -78,11 +78,11 @@ public class Localization {
     }
 
     /** Take a desired field-relative X/Y command and convert to actual robot drive commands. */
-    public void convertFieldRelative(double x, double y, double rotate)
+    public void convertFieldRelative(double fwd_x, double right_y, double rotate)
     {
         // First, convert direction being asked to drive to polar coordinates
-        double theta = Math.atan2(x, y);
-        double r = Math.hypot(y, x);
+        double theta = Math.atan2(fwd_x, right_y);
+        double r = Math.hypot(right_y, fwd_x);
 
         convertSpeedDirection(r, theta);
         newRotate = rotate;

@@ -113,6 +113,7 @@ public class TeleopRedTeam extends OpMode {
     double flowerBarPosition = 0.5;
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
     double teamLEDColor, LEDColor;
+    private double lastLaunchCommand = 0;  // Timestamp used for waitingForLaunch()
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -231,6 +232,13 @@ public class TeleopRedTeam extends OpMode {
             LEDColor = Calibration.LED_OFF;
         }
 
+        /* *************** Yaw orientation reset logic ************* */
+
+        if( gamepad1.right_stick_button ){
+            // If right stick button is pressed, reset the "field relative" orientation.
+            localization.resetYaw();
+        }
+
         /* *************** Chassis Movement Controls *************** */
 
         // Get chassis stick inputs, applying parabolic transform:
@@ -238,30 +246,31 @@ public class TeleopRedTeam extends OpMode {
         double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
         double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
 
-        // Left bumper is now APRIL tag AUTO AIMBOT MODE
-        if (gamepad1.left_bumper) {
+        // Apply field relative conversion:
+        if( USE_FIELD_RELATIVE ){
+            localization.convertFieldRelative(forward, right, rotate);
+            forward = localization.newForward;
+            right = localization.newRight;
+            rotate = localization.newRotate;
+        }
+
+        // Decide how chassis should be controlled:
+        if( waitingForLaunch() ){
+            // When winch is launching, DO NOT MOVE THE ROBOT!
+            drive(0, 0, 0);
+        }
+        else if (gamepad1.left_bumper) {
+            // Left bumper is now APRIL tag AUTO AIMBOT MODE.
             // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
             AlineToAprilTag( !gamepad1.right_bumper, forward, right, rotate );
         } 
         else if (gamepad1.right_bumper) {
-            // Wall following mode
+            // Right bumper enables wall following strafe mode
             strafeAlongWall(right);
         } 
         else {
-            // No bumpers being pressed.
-            if( gamepad1.right_stick_button ){
-                // If right stick button is pressed, reset the IMU.
-                localization.resetYaw();
-            }
-            // Apply gamepad inputs:
-            if( USE_FIELD_RELATIVE ){
-                localization.convertFieldRelative(forward, right, rotate);
-                drive(localization.newForward, localization.newRight, localization.newRotate);
-            }
-            else {
-                drive(forward, right, rotate);
-            }
-
+            // No bumpers being pressed. Apply gamepad inputs commands:
+            drive(forward, right, rotate);
         }
 
         /* ************* Winch State Machine *********** */
@@ -385,6 +394,7 @@ public class TeleopRedTeam extends OpMode {
             // Check conditions
             if( operatorGamepad.x && allowLaunch ){
                 catapultState = CatapultState.LAUNCHING;
+                lastLaunchCommand = time;
             }
             if( operatorGamepad.b ){
                 catapultState = CatapultState.IDLE;
@@ -405,6 +415,11 @@ public class TeleopRedTeam extends OpMode {
         else {
             catapultState = CatapultState.IDLE;
         }
+    }
+
+    /** Return true if the catapult has not finished launching or timed out */
+    boolean waitingForLaunch(){
+        return catapultState == CatapultState.LAUNCHING && (time - lastLaunchCommand) < Calibration.WINCH_FIRING_LOCKOUT;
     }
 
     // Helper function to speed up loop time
@@ -436,16 +451,8 @@ public class TeleopRedTeam extends OpMode {
     }
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
-    void AlineToAprilTag(boolean display_only, double forward, double right, double rotate) {
-        if( USE_FIELD_RELATIVE ){
-            // For field relative mode, make sure we are translating into field relative commands
-            // before sending to performSensing, because it will sometimes allow 'right' command through:
-            localization.convertFieldRelative(forward, right, rotate);
-            forward = localization.newForward;
-            right = localization.newRight;
-            rotate = localization.newRotate;
-        }
-
+    void AlineToAprilTag(boolean display_only, double forward, double right, double rotate)
+    {
         // Perform the sensing
         aprilSensing.performSensing(forward, right, rotate);
         if( display_only ){
