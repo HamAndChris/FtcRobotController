@@ -57,7 +57,7 @@ public class Utility_RotationCal extends Auton_Basic {
             drive(0, 0, rotate);
 
             // Apply IIR filter to IMU measured rotation:
-            avgRot = avgRot * coeff + localization.getOmega();
+            avgRot = avgRot * coeff + localization.getOmega() * (1 - coeff);
             telemetry.addData("Commanded", "%.2f", ROTATE_RADPS);
             telemetry.addData("Measured", "%.2f", avgRot);
 
