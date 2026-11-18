@@ -337,7 +337,9 @@ public class Auton_Basic extends LinearOpMode {
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag() {
         aprilSensing.performSensing(0, 0, 0);
-        drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate); 
+        drive(  aprilSensing.Forward,
+                aprilSensing.Right,
+                aprilSensing.Rotate);
         if( aprilSensing.OnTarget ){
             setPositionCached(ledIndicator, Calibration.LED_READY_TO_FIRE);
         }

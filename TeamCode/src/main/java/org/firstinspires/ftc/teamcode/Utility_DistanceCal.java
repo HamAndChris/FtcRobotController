@@ -54,7 +54,7 @@ public class Utility_DistanceCal extends Auton_Basic {
         while( opModeIsActive() ){
             beginLoop("Waiting for input");
             telemetry.addLine("Press D-Pad to begin moving.");
-            telemetry.addData("Settings", "%.1f inches, speed %0.1f, accel %0.2f", DISTANCE, SPEED, ACCEL);
+            telemetry.addData("Settings", "%.1f inches, speed %.1f, accel %.2f", DISTANCE, SPEED, ACCEL);
             if( gamepad1.dpad_up ){
                 targetFwd = DISTANCE;
                 break;

@@ -26,9 +26,9 @@ public class Localization {
 
     // Tuning multipliers. Mecanum wheels slip, especially when strafing.
     // Drive 100" and multiply by (100 / measured). Do the same for a 100" strafe.
-    private static final double FORWARD_MULTIPLIER = 1.0;
-    private static final double STRAFE_MULTIPLIER  = 1.0;
-    private static final double ROTATE_MULTIPLIER  = 1.0;
+    public static final double FORWARD_MULTIPLIER = 1.0;
+    public static final double STRAFE_MULTIPLIER  = 1.0;
+    public static final double ROTATE_MULTIPLIER  = 1.0;
 
 
     // Internal state variables:

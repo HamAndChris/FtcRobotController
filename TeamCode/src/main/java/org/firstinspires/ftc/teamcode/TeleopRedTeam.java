@@ -453,7 +453,9 @@ public class TeleopRedTeam extends OpMode {
         }
         else {
             // Alignment mode. Pass through the alignment algorithm:
-            drive(aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate);
+            drive(  aprilSensing.Forward,
+                    aprilSensing.Right,
+                    aprilSensing.Rotate);
         }
 
         // Turn on LED:
