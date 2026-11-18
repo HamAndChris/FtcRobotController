@@ -28,6 +28,7 @@ public class Localization {
     // Drive 100" and multiply by (100 / measured). Do the same for a 100" strafe.
     private static final double FORWARD_MULTIPLIER = 1.0;
     private static final double STRAFE_MULTIPLIER  = 1.0;
+    private static final double ROTATE_MULTIPLIER  = 1.0;
 
 
     // Internal state variables:
@@ -233,6 +234,14 @@ public class Localization {
     public double distanceFrom( Pose2D targetPose ){
         Pose2D diff = differenceFrom(targetPose);
         return Math.sqrt( Math.pow(diff.getX(DistanceUnit.INCH), 2) + Math.pow(diff.getY(DistanceUnit.INCH), 2) );
+    }
+
+    // Get the rotation command for a desired angular rate in CCW radians/s (TODO: calibrate this)
+    public double getRotateCommand(double radiansPerSec){
+        double trackWidth_inch = 16;
+        double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
+        double desiredMotorSpeed = desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
+        return -Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
     }
 
 

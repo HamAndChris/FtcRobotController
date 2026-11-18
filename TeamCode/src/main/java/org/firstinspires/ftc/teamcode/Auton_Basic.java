@@ -160,7 +160,7 @@ public class Auton_Basic extends LinearOpMode {
         localization = new Localization(hardwareMap, telemetry);
 
         // Initialize the APRIL tag sensing / webcam
-        aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
+        aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry, localization);
 
 
         /* ********** Keep the winch wound while we wait for user to press START ************ */

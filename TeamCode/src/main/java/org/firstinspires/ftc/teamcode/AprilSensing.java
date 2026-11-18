@@ -15,16 +15,20 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 public class AprilSensing {
     private String TeamColor;
-    private AprilTagProcessor aprilTag;
-    private VisionPortal visionPortal;
-    private Telemetry telemetry;
+    private final AprilTagProcessor aprilTag;
+    private final VisionPortal visionPortal;
+    private final Telemetry telemetry;
+    private final Localization localization;
 
     public double Forward = 0, Rotate = 0, Right = 0; // Outputs after calling AlineToAprilTag()
     public boolean Detected = false, OnTarget = false; // Whether we found a tag and are in an acceptable firing position
 
-    public AprilSensing(String teamColor, HardwareMap hardwareMap, Telemetry telem){
+    public static final boolean ALLOW_STRAFING_IN_ALIGNMENT = true;
+
+    public AprilSensing(String teamColor, HardwareMap hardwareMap, Telemetry telem, Localization localization){
         TeamColor = teamColor;
         telemetry = telem;
+        this.localization = localization;
 
         // Initialize camera:
         //aprilTag = AprilTagProcessor.easyCreateWithDefaults();
@@ -87,14 +91,23 @@ public class AprilSensing {
                             * Calibration.APRIL_YAW_GAIN_P;
                     Forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
                             * -Calibration.APRIL_DIST_GAIN_P;
-                    //Right = 0;
                     telemetry.addData("Rotate/Forward", "%3.2f / %3.2f", Rotate, Forward);
 
                     // Allow strafing, with rotation added:
-                    double rotationRadius = 30; // inches
-                    double rightSpeed = right * Calibration.MAX_SPEED_INCHES_PER_S / 5; // fudge factor
-                    double extraRotate = -Math.asin(rightSpeed/rotationRadius);
-                    Rotate += extraRotate;
+                    if( ALLOW_STRAFING_IN_ALIGNMENT ) {
+                        double rotationRadius = 30; // inches
+                        //                    double rightSpeed = right * Calibration.MAX_SPEED_INCHES_PER_S / 5; // fudge factor
+                        //                    double extraRotate = -Math.asin(rightSpeed/rotationRadius);
+                        //                    Rotate += extraRotate;
+
+                        // Use actual lateral velocity to calculate rotation rate needed:
+                        double rightSpeed = -localization.getRobotVy();
+                        double extraRadsPerSec = -Math.asin(rightSpeed / rotationRadius);
+                        Rotate += localization.getRotateCommand(extraRadsPerSec);
+                    }
+                    else {
+                        Right = 0;
+                    }
 
                     Detected = true;
 

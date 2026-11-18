@@ -172,7 +172,7 @@ public class TeleopRedTeam extends OpMode {
         localization = new Localization(hardwareMap, telemetry);
 
         // Initialize the April tag camera:
-        aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry);
+        aprilSensing = new AprilSensing(teamColor(), hardwareMap, telemetry, localization);
 
         // Set the control and expansion hub to "bulk read" mode to improve performance
         allHubs = hardwareMap.getAll(LynxModule.class);
