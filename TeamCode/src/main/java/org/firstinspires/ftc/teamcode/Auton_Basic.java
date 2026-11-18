@@ -40,11 +40,6 @@ import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -108,6 +103,16 @@ public class Auton_Basic extends LinearOpMode {
     }
     private boolean redTeam = false; // Now switchable
 
+    /** Placement instructions to show on Driver Hub during initialization. Other auton modes should override this. */
+    public String placementInstructions(){
+        return( "On driver wall, left of parking zone" );
+    }
+
+    /** Description to show on Driver Hub during initialization. Other auton modes should override this. */
+    public String modeDescription(){
+        return String.format("Moves forward %.1f inches, right %.1f inches", Calibration.AUTON_DIST_STEP1, 24.0);
+    }
+
     @Override
     public void runOpMode() {
         // 1. Retrieve all connected REV Hubs (Control Hub + Expansion Hub)
@@ -167,12 +172,17 @@ public class Auton_Basic extends LinearOpMode {
 
         while( opModeInInit() ){
             beginLoop("Choose a Team");
+            telemetry.addLine();
             telemetry.addLine("****************************");
-            telemetry.addLine("*                           ");
-            telemetry.addLine("*   Press X for BLUE team   ");
-            telemetry.addLine("*   Press B for RED team    ");
-            telemetry.addLine("*                           ");
+            telemetry.addLine("*");
+            telemetry.addLine("*  ( X ) = BLUE team");
+            telemetry.addLine("*");
+            telemetry.addLine("*             RED team = ( B )");
+            telemetry.addLine("*");
             telemetry.addLine("****************************");
+            telemetry.addLine();
+            telemetry.addData("Description", modeDescription());
+            telemetry.addData("Placement", placementInstructions());
 
             // Blink red/blue while we wait for user to select a team color with the gamepad.
             // If they press Start without choosing one, it'll be whatever color was lit when they pressed it.
@@ -196,7 +206,11 @@ public class Auton_Basic extends LinearOpMode {
         // Now just wait for START button from driver hub
         while( opModeInInit() ){
             beginLoop("Waiting for Start");
+            telemetry.addLine();
             telemetry.addData("Team chosen", teamColor() );
+            telemetry.addLine();
+            telemetry.addData("Description", modeDescription());
+            telemetry.addData("Placement", placementInstructions());
         }
 
 
@@ -206,7 +220,7 @@ public class Auton_Basic extends LinearOpMode {
         doAuton();
 
 
-        /* *********** Call doAuton, which will be overridden by other auton modes ********** */
+        /* **************************** Wrap everything up.  ************************** */
 
         // After all steps complete, make sure to stop and turn off the LED:
         drive(0, 0, 0);
@@ -221,20 +235,17 @@ public class Auton_Basic extends LinearOpMode {
     // without repeating all the setup code.
     public void doAuton()
     {
-//        // Step 1 move forward 6 inches
-//        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_PARKING_REAR_DIST && runtime.seconds() < 3 ) {
-//            beginLoop("Step 1 (Moving Forward)");
-//            drive(0.2, 0, 0);
-//        }
-
-        // Step 1 move forward 6 inches (using new automatic smooth movement function):
-        autoDriveNoRotation(Calibration.AUTON_PARKING_REAR_DIST, 0, 0.2);
+        // Step 1 move forward 6 inches
+        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_PARKING && runtime.seconds() < 3 ) {
+            beginLoop("Step 1 (Moving Forward)");
+            drive(0.2, 0, 0);
+        }
         
         // Step 2 slide right until we're 24 inches from the wall, then hold there so we don't get pushed out of the box
         // But stop at 30 seconds to avoid penalties
         while( opModeIsActive() && runtime.seconds() < 30 ) {
             beginLoop("Step 2 (Parking)");
-            holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 24);
+            holdPositionLeft(Calibration.AUTON_DIST_PARKING, 24);
         }
 
         // Done! Now runOpMode() will take over and disable drives and LED 
@@ -354,7 +365,29 @@ public class Auton_Basic extends LinearOpMode {
         setPowerCached(intakeMotor2, speed);
     }
 
-    // Call this to trigger a catapult launch (since doWinchStatemachine is called from beginLoop now)
+    /** Helper function to set Flower Bar to down position */
+    void flowerBarDown(){
+        setPositionCached(flowerBar, Calibration.FLOWER_BAR_DOWN);
+    }
+    /** Helper function to set Flower Bar to up position */
+    void flowerBarUp(){
+        setPositionCached(flowerBar, Calibration.FLOWER_BAR_UP);
+    }
+
+    /** Helper function to set intake motors on */
+    void intakeOn(){
+        setIntakeMotors(1.0);
+    }
+    /** Helper function to set intake motors off */
+    void intakeOff(){
+        setIntakeMotors(0.0);
+    }
+    /** Helper function to set intake motors in reverse */
+    void setIntakeOut(){
+        setIntakeMotors(-1.0);
+    }
+
+    /** Call this to trigger a catapult launch, but not wait for results */
     void launchCatapult(){
         // Manipulating the state directly. Only allow when in DOWN state.
         if( catapultState == CatapultState.DOWN ){
@@ -363,7 +396,7 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
-    // Return true if the catapult has finished launching or timed out
+    /** Return true if the catapult has finished launching or timed out */
     boolean waitingForLaunch(){
         return catapultState == CatapultState.LAUNCHING && (runtime.seconds() - lastLaunchCommand) < 2.0;
     }
@@ -452,20 +485,19 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
-    // Apply a single rate limit:
-    double applyRateLimit(double desired, double last, double rateLimit, double dt){
+    // Apply a rate + magnitude limit:
+    double applyLimits(double desired, double last, double rateLimit, double maxMagnitude, double dt){
         // Calculate max allowed increase based on rate limit and passage of time:
         double maxIncrease = dt * rateLimit;
+        double result;
 
         // Allow only that much increase, but instant decrease back to zero:
-        if( last == 0 ){
-            return Math.max(Math.min(desired, last + maxIncrease), last - maxIncrease);
-        }
-        else if( last > 0 ){
-            return Math.max(Math.min(desired, last + maxIncrease), 0);
+        if( last >= 0 ){
+            result = Math.max(Math.min(desired, last + maxIncrease), 0 - maxIncrease);
         } else {
-            return Math.min(Math.max(desired, last - maxIncrease), 0);
+            result = Math.min(Math.max(desired, last - maxIncrease), 0 + maxIncrease);
         }
+        return Math.max(Math.min(result, maxMagnitude), -maxMagnitude);
     }
     
     void drive(double forward, double right, double rotate)
@@ -498,91 +530,223 @@ public class Auton_Basic extends LinearOpMode {
         setPowerCached(backRightDrive, maxSpeed * (backRightPower / maxPower));
     }
 
-    // Auto loop to smoothly drive forward/right a desired amount using odometry. Also resets the odometry so be careful.
-    void autoDriveNoRotation(double inchesFwd, double inchesRight, double speed)
+//    // Auto loop to smoothly drive forward/right a desired amount using odometry. Also resets the odometry so be careful.
+//    void autoDriveNoRotation(double inchesFwd, double inchesRight, double speed)
+//    {
+//        // Reset the odometry, so robot is at position 0,0 and facing along X axis
+//        localization.setPose(0, 0, 0);
+//
+//        double currentForward = 0, currentRight = 0;
+//        double lastTime = runtime.seconds();
+//        while( opModeIsActive()
+//                && Math.abs(localization.getX()) < (inchesFwd - Calibration.AUTON_DIST_THRESHOLD)
+//                && Math.abs(localization.getY()) < (inchesRight - Calibration.AUTON_DIST_THRESHOLD) ){
+//            beginLoop("autoDriveForward");
+//
+//            double now = runtime.seconds();
+//            double dt = now - lastTime;
+//            lastTime = now;
+//            if( inchesFwd != 0 ){
+//                // Calculate forward command for smooth deceleration using kinematics equation:
+//                double distFwd = inchesFwd - localization.getX();
+//                double forward = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distFwd );
+//                // Use rate limiter to apply smooth acceleration:
+//                currentForward = applyLimits(forward, currentForward, Calibration.AUTON_ACCEL, speed, dt);
+//            }
+//            if( inchesRight != 0 ){
+//                // Calculate forward command for smooth deceleration using kinematics equation:
+//                double distRight = inchesRight - localization.getY();
+//                double right     = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distRight );
+//                // Use rate limiter to apply smooth acceleration:
+//                currentRight = applyLimits(right, currentRight, Calibration.AUTON_ACCEL, speed, dt);
+//            }
+//            // Keep rotation on target:
+//            double rotate = localization.getHeadingDeg() * Calibration.AUTON_ANGLE_GAIN_P;
+//            drive(currentForward, currentRight, rotate);
+//            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f", currentForward, currentRight, rotate);
+//        }
+//        drive(0, 0, 0);
+//    }
+
+    /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
+     - Assumes zero speed at beginning and end of operation.
+     - Locks heading to current value during operation.
+     - Keeps trying forever until within 1 inch of target. */
+    void autoSlideTo(double xInches, double yInches)
     {
-        // Reset the odometry, so robot is at position 0,0 and facing along X axis
-        localization.setPose(0, 0, 0);
+        double originalHeading = Math.toDegrees( localization.getHeadingDeg() );
+        autoSlideTo(xInches, yInches, originalHeading);
+    }
 
-        double currentForward = 0, currentRight = 0;
+    /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
+     - Assumes zero speed at beginning and end of operation.
+     - Locks heading to given value during operation.
+     - Keeps trying forever until within 1 inch of target. */
+    void autoSlideTo(double xInches, double yInches, double headingDeg)
+    {
+        double currentSpeed = 0;
         double lastTime = runtime.seconds();
-        while( opModeIsActive()
-                && Math.abs(localization.getX()) < (inchesFwd - Calibration.AUTON_THRESHOLD)
-                && Math.abs(localization.getY()) < (inchesRight - Calibration.AUTON_THRESHOLD) ){
-            beginLoop("autoDriveForward");
+        double distanceToGo = localization.distanceTo(xInches, yInches);
+        String label = String.format("autoSlideTo(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
 
+        while( opModeIsActive() && distanceToGo > Calibration.AUTON_DIST_THRESHOLD){
+            beginLoop(label);
+
+            // Calculate timestep:
             double now = runtime.seconds();
             double dt = now - lastTime;
             lastTime = now;
-            if( inchesFwd != 0 ){
-                // Calculate forward command for smooth deceleration using kinematics equation:
-                double distFwd = inchesFwd - localization.getX();
-                double forward = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distFwd );
-                forward = Math.max( Math.min(forward, speed), -speed );
-                // Use rate limiter to apply smooth acceleration:
-                currentForward = applyRateLimit(forward, currentForward, Calibration.AUTON_ACCEL, dt);
-            }
-            if( inchesRight != 0 ){
-                // Calculate forward command for smooth deceleration using kinematics equation:
-                double distRight = inchesRight - localization.getY();
-                double right     = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distRight );
-                right = Math.max( Math.min(right, speed), -speed );
-                // Use rate limiter to apply smooth acceleration:
-                currentRight = applyRateLimit(right, currentRight, Calibration.AUTON_ACCEL, dt);
-            }
+
+            // Calculate new distance and heading to target:
+            distanceToGo = localization.distanceTo(xInches, yInches);
+            double headingToGo = localization.directionTo(xInches, yInches);
+
+            // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
+            double speedToGo = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distanceToGo );
+
+            // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
+            currentSpeed = applyLimits(speedToGo, currentSpeed, Calibration.AUTON_ACCEL, Calibration.AUTON_SLIDE_SPEED, dt);
+
+            // Turn speed and heading into forward/rotate:
+            localization.convertSpeedDirection(speedToGo, headingToGo);
+
             // Keep rotation on target:
-            double rotate = localization.getHeadingDeg() * Calibration.AUTON_ANGLE_GAIN_P;
-            drive(currentForward, currentRight, rotate);
-            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f", currentForward, currentRight, rotate);
+            double rotateP = localization.diffFromHeadingDeg(headingDeg) * Calibration.AUTON_ANGLE_GAIN_P;
+
+            drive(localization.newForward, localization.newRight, rotateP);
+            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
+                    localization.newForward, localization.newRight, rotateP);
         }
     }
 
-    // Auto loop to smoothly drive forward/right a desired amount using odometry.
-    // This one will drive in a straight line and not reset the localization.
-    // But it's not done yet so don't use it.
-    void autoDriveExperimental(double inchesFwd, double inchesRight, double speed)
+    /** Auto sequence to drain a flower. Must be already lines up with robot center AUTON_DIST_FLOWER inches from the wall.
+     *  Does not wait for flower bar to go down. Make sure you set it down before calling this!
+     *  It does raise the flower bar afterwards though. */
+    void autoDrainFlower()
     {
-        double heading = localization.getHeading();
-        double targetDist = Math.sqrt(inchesFwd*inchesFwd + inchesRight*inchesRight);
-        double targetX = localization.getX() + targetDist * Math.cos(heading);
-        double targetY = localization.getY() + targetDist * Math.sin(heading);
-        // Calculate the target Pose position:
-        Pose2D targetPose = new Pose2D(DistanceUnit.INCH, targetX, targetY, AngleUnit.RADIANS, heading);
+        double heading = localization.getHeadingSnappedTo(90);
+        double startX = localization.getX();
+        double startY = localization.getY();
 
-        // Reset the odometry, so robot is at position 0,0 and facing along X axis
-        //localization.setPose(0, 0, 0);
+        double drainX = startX + Math.cos(Math.toRadians(heading)) * Calibration.AUTON_DIST_FLOWER_DRAIN;
+        double drainY = startY + Math.sin(Math.toRadians(heading)) * Calibration.AUTON_DIST_FLOWER_DRAIN;
 
-        double currentForward = 0, currentRight = 0;
-        double lastTime = runtime.seconds();
-        double distTraveled = 0;
-        while( opModeIsActive()
-                && Math.abs(localization.getX()) < (inchesFwd - Calibration.AUTON_THRESHOLD)
-                && Math.abs(localization.getY()) < (inchesRight - Calibration.AUTON_THRESHOLD) ){
-            beginLoop("autoDriveForward");
+        // Turn on intake. Flower bar should already be down, and we don't want to wait for it here.
+        intakeOn();
 
-            double now = runtime.seconds();
+        // jam into flower, wait 2 seconds
+        autoSlideTo(drainX, drainY, heading);
+        autoPause(2);
+
+        // Back up to starting position, then do it again:
+        autoSlideTo(startX, startY, heading);
+        autoSlideTo(drainX, drainY, heading);
+        autoPause(2);
+
+        // back up to starting position, raise bar, and turn off intake
+        autoSlideTo(startX, startY, heading);
+        flowerBarUp();
+        intakeOff();
+    }
+
+    /** Auto loop to just wait for a set number of seconds */
+    void autoPause(double pauseSeconds){
+        double end = runtime.seconds() + pauseSeconds;
+        while( opModeIsActive() && runtime.seconds() < end ) {
+            beginLoop("autoPause");
+        }
+    }
+
+    /** Auto loop to smoothly rotate to a desired heading (CCW degrees field-relative).
+     - Assumes zero rotation speed at beginning and end of operation.
+     - Locks position current value during operation.
+     - Keeps trying forever until within 1 degree of target for 0.25 sec. */
+    void autoRotateTo(double newHeadingDeg)
+    {
+        double originalX = localization.getX();
+        double originalY = localization.getY();
+
+        double currentDegPerSec = 0;
+        double now = runtime.seconds();
+        double lastTime = now;
+        double lastMisalignedTime = now;
+        double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+        String label = String.format("autoRotateTo(%.1f, %.1f)", newHeadingDeg, Calibration.AUTON_ROTATE_SPEED);
+
+        while( opModeIsActive() && now - lastMisalignedTime < Calibration.AUTON_ANGLE_SETTLING){
+            beginLoop(label);
+
+            // Calculate timestep:
+            now = runtime.seconds();
             double dt = now - lastTime;
             lastTime = now;
-            if( inchesFwd != 0 ){
-                // Calculate forward command for smooth deceleration using kinematics equation:
-                double distFwd = inchesFwd - localization.getX();
-                double forward = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distFwd );
-                forward = Math.max( Math.min(forward, speed), -speed );
-                // Use rate limiter to apply smooth acceleration:
-                currentForward = applyRateLimit(forward, currentForward, Calibration.AUTON_ACCEL, dt);
+
+            // Calculate new distance and heading to target:
+            degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+
+            // Determine whether we're in the settling window:
+            if( Math.abs(degreesToGoCCW) > Calibration.AUTON_ANGLE_THRESH ){
+                lastMisalignedTime = now;
             }
-            if( inchesRight != 0 ){
-                // Calculate forward command for smooth deceleration using kinematics equation:
-                double distRight = inchesRight - localization.getY();
-                double right     = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distRight );
-                right = Math.max( Math.min(right, speed), -speed );
-                // Use rate limiter to apply smooth acceleration:
-                currentRight = applyRateLimit(right, currentRight, Calibration.AUTON_ACCEL, dt);
+
+            // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
+            double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) );
+            if( Math.signum(degreesToGoCCW) < 0 ){
+                degPerSec = -degPerSec;
             }
-            // Keep rotation on target:
-            double rotate = localization.getHeadingDeg() * Calibration.AUTON_ANGLE_GAIN_P;
-            drive(currentForward, currentRight, rotate);
-            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f", currentForward, currentRight, rotate);
+
+            // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
+            currentDegPerSec = applyLimits(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
+
+            // Convert from deg/sec to motor power:
+            double rotate = Localization.getRotateCommand(Math.toRadians(currentDegPerSec));
+
+            // Apply control loop to keep position constant:
+            double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
+            double pY = (originalY - localization.getY()) * Calibration.AUTON_POSITION_GAIN_P;
+            localization.convertFieldRelative(pX, pY, rotate);
+
+            drive(localization.newForward, localization.newRight, rotate);
+            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
+                    localization.newForward, localization.newRight, rotate);
+        }
+    }
+
+    /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
+    public boolean autoAlignAndFire(double abortTime){
+        boolean fired = false;
+        while( opModeIsActive() && runtime.seconds() < abortTime ) {
+            beginLoop("autoAlignAndFire");
+            AlineToAprilTag();
+            if( aprilSensing.OnTarget ){
+                // Successfully aligned to april tag. Fire away!
+                launchCatapult();
+                fired = true;
+
+                // Break out of loop
+                break;
+            }
+        }
+        // Stop motors:
+        drive(0, 0, 0);
+
+        setLEDTeamColor(); // Reset LED to team color after april alignment
+
+        // Wait for catapult to finish launching (if it is)
+        while( opModeIsActive() && waitingForLaunch() && runtime.seconds() < abortTime + 2 ) {
+            beginLoop("autoAlignAndFire (Launching)");
+        }
+
+        return fired;
+    }
+
+    /** Auto loop to hold the desired distance from a rear and left wall using distance sensors.
+     *  Stops at 30 seconds to prevent penalties. */
+    public void autoHoldDistances(double inchesRear, double inchesLeft)
+    {
+        while( opModeIsActive() && runtime.seconds() < 30 ){
+            beginLoop("autoHoldDistances");
+            holdPositionLeft(inchesRear, inchesLeft);
         }
     }
 

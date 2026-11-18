@@ -35,13 +35,23 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 @Autonomous(name="High Side", group="Robot")
 public class Auton_High_Side extends Auton_Basic {
 
+    @Override
+    public String modeDescription(){
+        return "Fire catapult once and return to parking zone";
+    }
+
+    @Override
+    public String placementInstructions(){
+        return( "Anywhere on right wall, facing hive." );
+    }
+
     // Function that performs the desired autonomous tasks. Override this to create new autons
     // without repeating all the setup code.
     @Override
     public void doAuton()
     {
         // Step 1: move forward a few inches
-        while(opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3) {
+        while(opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_STEP1 && runtime.seconds() < 3) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
         }
@@ -77,7 +87,7 @@ public class Auton_High_Side extends Auton_Basic {
         localization.resetYaw();
         while( opModeIsActive() && localization.getClockwiseAngle() < 90 ){
             beginLoop("Step 5 (Turn Right)");
-            drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing left
+            drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_MOTOR_SPEED); // Rotate right while still strafing left
         }
 
         // Step 6: Strafe along left wall until we're 1 meter from the far wall
@@ -89,7 +99,7 @@ public class Auton_High_Side extends Auton_Basic {
         // Step 7: backup to wall and hold wall distance in case we get bumped (but stop at 30 sec so no penalties)
         while( opModeIsActive()  ){
             beginLoop("Step 7 (Park)");
-            strafeAlongWall(Calibration.AUTON_PARKING_REAR_DIST, 0);
+            strafeAlongWall(Calibration.AUTON_DIST_PARKING, 0);
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED 

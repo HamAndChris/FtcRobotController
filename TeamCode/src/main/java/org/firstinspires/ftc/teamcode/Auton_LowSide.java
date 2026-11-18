@@ -33,13 +33,22 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 @Autonomous(name="Low Side", group="Robot")
 public class Auton_LowSide extends Auton_Basic {
+    @Override
+    public String modeDescription(){
+        return "Wait for hive tip, fire catapult once, and return to parking zone";
+    }
+
+    @Override
+    public String placementInstructions(){
+        return( "Anywhere on left wall, facing hive" );
+    }
 
     // Function that performs the desired autonomous tasks.
     @Override
     public void doAuton() 
     {
         // Step 1 move forward a few inches
-        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_STEP_1_DIST && runtime.seconds() < 3 ) {
+        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_STEP1 && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Move forward)");
             drive(0.3, 0, 0);
         }
@@ -74,14 +83,14 @@ public class Auton_LowSide extends Auton_Basic {
         localization.resetYaw();
         while( opModeIsActive() && localization.getClockwiseAngle() > -90 ){
             beginLoop("Step 5 (Turn Left)");
-            drive(0, 0, -Calibration.AUTON_ROTATE_SPEED);
+            drive(0, 0, -Calibration.AUTON_ROTATE_MOTOR_SPEED);
         }
 
         // Step 6: backup to wall and hold wall distances in case we get bumped
         // But stop at 30 seconds to avoid penalties
         while( opModeIsActive() && runtime.seconds() < 30 ){
             beginLoop("Step 6 (Park)");
-            holdPositionLeft(Calibration.AUTON_PARKING_REAR_DIST, 12);
+            holdPositionLeft(Calibration.AUTON_DIST_PARKING, 12);
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED

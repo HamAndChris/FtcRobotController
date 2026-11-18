@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
@@ -28,7 +27,7 @@ public class Localization {
     // Drive 100" and multiply by (100 / measured). Do the same for a 100" strafe.
     public static final double FORWARD_MULTIPLIER = 1.0;
     public static final double STRAFE_MULTIPLIER  = 1.0;
-    public static final double ROTATE_MULTIPLIER  = 1.0;
+    public static final double ROTATE_MULTIPLIER  = 0.6;
 
 
     // Internal state variables:
@@ -78,19 +77,26 @@ public class Localization {
         setPose(startingPose);
     }
 
-    public void translateToFieldRelative(double forward, double right, double rotate)
+    /** Take a desired field-relative X/Y command and convert to actual robot drive commands. */
+    public void convertFieldRelative(double x, double y, double rotate)
     {
         // First, convert direction being asked to drive to polar coordinates
-        double theta = Math.atan2(forward, right);
-        double r = Math.hypot(right, forward);
+        double theta = Math.atan2(x, y);
+        double r = Math.hypot(y, x);
 
-        // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta - heading);
+        convertSpeedDirection(r, theta);
+        newRotate = rotate;
+    }
+
+    // Take a desired speed and translation direction and convert to robot forward/right commands (ignores rotation)
+    public void convertSpeedDirection(double speed, double directionRads)
+    {
+        // Rotate angle by the angle the robot is pointing
+        double theta = AngleUnit.normalizeRadians(directionRads - heading);
 
         // Third, convert back to Cartesian
-        newForward = r * Math.sin(theta);
-        newRight = r * Math.cos(theta);
-        newRotate = rotate;
+        newForward = speed * Math.sin(theta);
+        newRight = speed * Math.cos(theta);
     }
 
 
@@ -200,9 +206,13 @@ public class Localization {
 
     public Pose2D getPose() { return new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.RADIANS, heading); }
 
+    /** Get current X field position in inches */
     public double getX()          { return x; }
+    /** Get current Y field position in inches */
     public double getY()          { return y; }
-    public double getHeading()    { return heading; }                    // radians
+    /** Get current heading in CCW radians */
+    public double getHeading()    { return heading; }
+    /** Get current heading in CCW degrees */
     public double getHeadingDeg() { return Math.toDegrees(heading); }
 
     /** Robot-relative velocity: forward (in/s). */
@@ -211,6 +221,15 @@ public class Localization {
     public double getRobotVy()  { return robotVyInPerSec; }
     /** Turn rate (rad/s), CCW positive. */
     public double getOmega()    { return omegaRadPerSec; }
+    /** Robot overall velocity (inch/s). */
+    public double getRobotSpeed()  {
+        return Math.hypot(robotVyInPerSec, robotVxInPerSec);
+    }
+
+    /** Get heading in degrees, snapped to nearest cardinal direction (multiple of 90) */
+    public double getHeadingSnappedTo(double increment){
+        return Math.round( getHeadingDeg() / increment ) * increment;
+    }
 
     /** Field-relative X velocity (in/s). */
     public double getFieldVx() {
@@ -221,23 +240,50 @@ public class Localization {
         return robotVxInPerSec * Math.sin(heading) + robotVyInPerSec * Math.cos(heading);
     }
 
-    // Calculate the difference in X, Y, and Heading from current location to another one.
+    /** Calculate the difference in X, Y, and Heading from current location to another one. */
     public Pose2D differenceFrom( Pose2D targetPose ) {
         return new Pose2D(DistanceUnit.INCH,
-                targetPose.getX(DistanceUnit.INCH) - x,
-                targetPose.getY(DistanceUnit.INCH) - y,
+                x - targetPose.getX(DistanceUnit.INCH),
+                y - targetPose.getY(DistanceUnit.INCH),
                 AngleUnit.RADIANS,
-                wrapAngle( targetPose.getHeading(AngleUnit.RADIANS) - heading) );
+                wrapAngle(heading - targetPose.getHeading(AngleUnit.RADIANS)) );
     }
 
-    // Calculate X/Y distance from current location to another point. Ignores heading.
-    public double distanceFrom( Pose2D targetPose ){
-        Pose2D diff = differenceFrom(targetPose);
-        return Math.sqrt( Math.pow(diff.getX(DistanceUnit.INCH), 2) + Math.pow(diff.getY(DistanceUnit.INCH), 2) );
+    /** Calculate difference in heading from desired. Returns CCW radians. */
+    public double diffFromHeading(double desiredHeadingRads){
+        return wrapAngle(heading - desiredHeadingRads);
+    }
+    /** Calculate difference in heading from desired. Returns CCW degrees. */
+    public double diffFromHeadingDeg(double desiredHeadingDeg){
+        return Math.toDegrees( wrapAngle(heading - Math.toRadians(desiredHeadingDeg)) );
     }
 
-    // Get the rotation command for a desired angular rate in CCW radians/s (TODO: calibrate this)
-    public double getRotateCommand(double radiansPerSec){
+    /** Calculate X/Y distance from current location to another point. Ignores heading. */
+    public double distanceTo( Pose2D targetPose ){
+        return distanceTo( targetPose.getX(DistanceUnit.INCH), targetPose.getX(DistanceUnit.INCH) );
+    }
+
+    /** Calculate X/Y distance from current location to another point. Ignores heading. */
+    public double distanceTo( double xInches, double yInches ){
+        double xDiff = xInches - x;
+        double yDiff = yInches - y;
+        return Math.hypot(xDiff, yDiff);
+    }
+
+    /** Calculate heading from current location to another point (ignoring robot heading). Returns CCW radians. */
+    public double directionTo( Pose2D targetPose ){
+        return directionTo( targetPose.getX(DistanceUnit.INCH), targetPose.getX(DistanceUnit.INCH) );
+    }
+
+    /** Calculate heading from current location to another point (ignoring robot heading). Returns CCW radians. */
+    public double directionTo( double xInches, double yInches ){
+        double xDiff = xInches - x;
+        double yDiff = yInches - y;
+        return Math.atan2(yDiff, xDiff);
+    }
+
+    /** Get the rotation command for a desired angular rate in CCW radians/s (TODO: calibrate this) */
+    public static double getRotateCommand(double radiansPerSec){
         double trackWidth_inch = 16;
         double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
         double desiredMotorSpeed = desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;

@@ -43,6 +43,18 @@ public class Utility_DistanceCal extends Auton_Basic {
     public static final double ACCEL     = 0.1; // motor speed increase per second
     public static final double ANGLE_P   = 0.3/90; // Power/deg: Proportional gain to prevent rotation
 
+    // Driver info:
+
+    @Override
+    public String modeDescription(){
+        return "Drive in a straight line to calibrate distance measurements";
+    }
+
+    @Override
+    public String placementInstructions(){
+        return( String.format("Somewhere with at least %.1f inches of space", DISTANCE) );
+    }
+
     // Function that performs the desired autonomous tasks. Override this to create new autons
     // without repeating all the setup code.
     @Override
@@ -89,20 +101,18 @@ public class Utility_DistanceCal extends Auton_Basic {
             double dt = now - lastTime;
             lastTime = now;
             if( targetFwd != 0 ){
-                // Calculate forward command for smooth deceleration using kinematics equation:
+                // Calculate forward command for smooth _deceleration_ using kinematics equation:
                 double distFwd = targetFwd - localization.getX();
                 double forward = Math.sqrt( 2 * ACCEL * distFwd );
-                forward = Math.max( Math.min(forward, SPEED), -SPEED );
-                // Use rate limiter to apply smooth acceleration:
-                currentForward = applyRateLimit(forward, currentForward, ACCEL, dt);
+                // Use rate limiter to apply smooth _acceleration_ and cap to desired speed:
+                currentForward = applyLimits(forward, currentForward, ACCEL, SPEED, dt);
             }
             else if( targetRight != 0 ){
                 // Calculate forward command for smooth deceleration using kinematics equation:
                 double distRight = targetRight - localization.getY();
                 double right     = Math.sqrt( 2 * ACCEL * distRight );
-                right = Math.max( Math.min(right, SPEED), -SPEED );
-                // Use rate limiter to apply smooth acceleration:
-                currentRight = applyRateLimit(right, currentRight, ACCEL, dt);
+                // Use rate limiter to apply smooth _acceleration_ and cap to desired speed:
+                currentRight = applyLimits(right, currentRight, ACCEL, SPEED, dt);
             }
             // Keep rotation on target:
             double rotate = localization.getHeadingDeg() * ANGLE_P;

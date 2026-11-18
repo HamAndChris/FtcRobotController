@@ -6,17 +6,54 @@ package org.firstinspires.ftc.teamcode;
  * These values can be used across multiple OpModes and classes.
  */
 public final class Calibration {
-
     // Prevent instantiation
     private Calibration() {}
 
-    // Winch control calibrations:
-    public static final int    WINCH_LAUNCH_AMOUNT = 1500; // Encoder ticks to fire the winch
-    public static final double WINCH_HOLDING_FEEDFORWARD = 0.15; // Holding motor power
-    public static final double WINCH_HOLDING_GAIN_P = 0.001; // Motor holding proportional gain
+    // Autonomous behavior calibrations:
 
-    // User controls calibrations:
-    public static final double STICK_RATE_LIMIT = 4.0; // Maximum command change per second (to smooth out controls)
+    /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
+    public static final double AUTON_STRAFE_SPEED = 0.3;
+    /** MotorSpeed: Default translation speed for autoSlideTo() operations */
+    public static final double AUTON_SLIDE_SPEED = 0.75;
+    /** Deg/sec: Default rotational speed for operations */
+    public static final double AUTON_ROTATE_SPEED = 90;
+    /** MotorSpeed: Translated from angle speed */
+    public static final double AUTON_ROTATE_MOTOR_SPEED = Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED));
+    /** Inches: How far to come off wall before beginning to look for APRIL tags */
+    public static final double AUTON_DIST_STEP1   = 9;
+    /** Inches: Distance to wall in parking zone at end of autonomy */
+    public static final double AUTON_DIST_PARKING = 6;
+    /** Inches: Distance from center of robot to wall when strafing */
+    public static final double AUTON_STRAFE_DIST  = 16;
+    /** Inches: Distance from center of robot to wall to approach flowers */
+    public static final double AUTON_DIST_FLOWER_APPROACH = 18;
+    /** Inches: Travel distance to drain flowers */
+    public static final double AUTON_DIST_FLOWER_DRAIN = 6;
+
+    // Autonomous motion profiling calibrations:
+
+    /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
+    public static final double AUTON_ACCEL          = 1.0;
+    /** Inches: Distance for translational movements to be considered "at target" */
+    public static final double AUTON_DIST_THRESHOLD = 1.0;
+    /** Deg: IMU angle alignment "done" angle threshold */
+    public static final double AUTON_ANGLE_THRESH   = 2.0;
+    /** Deg/sec/sec: How quickly to ramp up/down rotational movements */
+    public static final double AUTON_ANGLE_ACCEL    = 180;
+    /** Sec: IMU angle alignment "done" time threshold */
+    public static final double AUTON_ANGLE_SETTLING = 0.25;
+    /** MotorSpeed/Deg: IMU angle alignment proportional gain */
+    public static final double AUTON_ANGLE_GAIN_P = 0.3/90;
+    /** Speed/inch: Position holding proportional gain */
+    public static final double AUTON_POSITION_GAIN_P = 0.05;
+
+    // Winch control calibrations:
+    /** Encoder Counts: How far to rotate to fire the catapult */
+    public static final int    WINCH_LAUNCH_AMOUNT = 1500;
+    /** Motor Power: Starting amount to hold winch down */
+    public static final double WINCH_HOLDING_FEEDFORWARD = 0.15;
+    /** MotorPower/Counts: Motor holding proportional gain */
+    public static final double WINCH_HOLDING_GAIN_P = 0.001;
 
     // APRIL tag aim-bot calibrations:
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
@@ -33,24 +70,9 @@ public final class Calibration {
     public static final double LASER_DIST_MAXPOWER  = 0.3;
     public static final double LASER_SAMPLE_RATE    = 5;         // How often to sample the side lasers in autonomous (Hz)
 
-    // Autonomous behavior calibrations:
-    public static final double AUTON_STRAFE_SPEED = 0.3;
-    public static final double AUTON_ROTATE_SPEED = 0.3;
-    public static final double AUTON_STRAFE_DIST  = 16;     // Inches: Distance from center of robot to wall when strafing
-    public static final double AUTON_STEP_1_DIST  = 9;      // Inches: How far to come off wall before beginning to look for APRIL tags
-    public static final double AUTON_ANGLE_GAIN_P = 0.3/90; // Deg: IMU angle alignment proportional gain
-    public static final double AUTON_ANGLE_THRESH = 2.0;    // Deg: IMU angle alignment "done" angle threshold
-    public static final double AUTON_ANGLE_SETTLING = 0.25; // Sec: IMU angle alignment "done" time threshold
-    public static final double AUTON_PARKING_REAR_DIST = 6; // Inches: Distance to wall in parking zone at end of autonomy
-
-    // Autonomous motion profiling calibrations:
-    public static final double AUTON_ACCEL     = 1.0;  // Motor speed/sec: How quickly to ramp up/down translational movements
-    public static final double AUTON_THRESHOLD = 0.1;  // inches: Distance for translational movements to be onsidered "at target"
-    public static final double AUTON_ROT_ACCEL = 0.5;  // Motor speed/sec: How quickly to ramp up/down rotational movements
-
     // LED control values from documentation:
     public static final double LED_OFF    = 0.10;
-    public static final double LED_RED    = 0.29; // Should be 0.277, but 0.27 wasn't turning on
+    public static final double LED_RED    = 0.29;
     public static final double LED_YELLOW = 0.38;
     public static final double LED_GREEN  = 0.50;
     public static final double LED_BLUE   = 0.61;

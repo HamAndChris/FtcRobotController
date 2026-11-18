@@ -39,9 +39,6 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
-
-import org.firstinspires.ftc.teamcode.AprilSensing;
-
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -258,7 +255,7 @@ public class TeleopRedTeam extends OpMode {
             }
             // Apply gamepad inputs:
             if( USE_FIELD_RELATIVE ){
-                localization.translateToFieldRelative(forward, right, rotate);
+                localization.convertFieldRelative(forward, right, rotate);
                 drive(localization.newForward, localization.newRight, localization.newRotate);
             }
             else {
@@ -275,24 +272,22 @@ public class TeleopRedTeam extends OpMode {
 
         // Left trigger spits out, even if right trigger is still held:
         if( operatorGamepad.left_trigger > 0.2 ){
-            setIntakeMotors(-1);
+            setIntakeOut();
         }
         else if( operatorGamepad.right_trigger > 0.2 ){
-            setIntakeMotors(1.0);
+            intakeOn();
         }
         else {
-            setIntakeMotors(0);
+            intakeOff();
         }
 
         /* ************* Flower Bar Controls *********** */
 
         if( operatorGamepad.dpad_up ){
-            flowerBarPosition = Calibration.FLOWER_BAR_UP;
-            setPositionCached(flowerBar, flowerBarPosition);
+            flowerBarUp();
         }
         if( operatorGamepad.dpad_down ){
-            flowerBarPosition = Calibration.FLOWER_BAR_DOWN;
-            setPositionCached(flowerBar, flowerBarPosition);
+            flowerBarDown();
         }
         //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
 
@@ -304,6 +299,28 @@ public class TeleopRedTeam extends OpMode {
 
         // Track previous loop time for rate calculations:
         lastTime = time;
+    }
+
+    /** Helper function to set Flower Bar to down position */
+    void flowerBarDown(){
+        setPositionCached(flowerBar, Calibration.FLOWER_BAR_DOWN);
+    }
+    /** Helper function to set Flower Bar to up position */
+    void flowerBarUp(){
+        setPositionCached(flowerBar, Calibration.FLOWER_BAR_UP);
+    }
+
+    /** Helper function to set intake motors on */
+    void intakeOn(){
+        setIntakeMotors(1.0);
+    }
+    /** Helper function to set intake motors off */
+    void intakeOff(){
+        setIntakeMotors(0.0);
+    }
+    /** Helper function to set intake motors in reverse */
+    void setIntakeOut(){
+        setIntakeMotors(-1.0);
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -328,22 +345,6 @@ public class TeleopRedTeam extends OpMode {
         }
 
         telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
-    }
-
-    // Apply a single rate limit:
-    private double applyRateLimit(double desired, double last, double rateLimit){
-        // Calculate max allowed increase based on rate limit and passage of time:
-        double maxIncrease = (time - lastTime) * rateLimit;
-
-        // Allow only that much increase, but instant decrease back to zero:
-        if( last == 0 ){
-            return Math.max(Math.min(desired, last + maxIncrease), last - maxIncrease);
-        }
-        else if( last > 0 ){
-            return Math.max(Math.min(desired, last + maxIncrease), 0);
-        } else {
-            return Math.min(Math.max(desired, last - maxIncrease), 0);
-        }
     }
 
     private void doWinchStatemachine(boolean allowLaunch) {
@@ -439,7 +440,7 @@ public class TeleopRedTeam extends OpMode {
         if( USE_FIELD_RELATIVE ){
             // For field relative mode, make sure we are translating into field relative commands
             // before sending to performSensing, because it will sometimes allow 'right' command through:
-            localization.translateToFieldRelative(forward, right, rotate);
+            localization.convertFieldRelative(forward, right, rotate);
             forward = localization.newForward;
             right = localization.newRight;
             rotate = localization.newRotate;
