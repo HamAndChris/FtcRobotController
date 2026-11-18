@@ -103,6 +103,11 @@ public class Auton_Basic extends LinearOpMode {
     }
     private boolean redTeam = false; // Now switchable
 
+    // Helper to stop all "auto loop" auton modes once time is up:
+    boolean timesNotUp(){
+        return runtime.seconds() < Calibration.AUTON_TIME_LIMIT;
+    }
+
     /** Placement instructions to show on Driver Hub during initialization. Other auton modes should override this. */
     public String placementInstructions(){
         return( "On driver wall, left of parking zone" );
@@ -589,7 +594,7 @@ public class Auton_Basic extends LinearOpMode {
         double distanceToGo = localization.distanceTo(xInches, yInches);
         String label = String.format("autoSlideTo(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
 
-        while( opModeIsActive() && distanceToGo > Calibration.AUTON_DIST_THRESHOLD){
+        while( opModeIsActive() && timesNotUp() && distanceToGo > Calibration.AUTON_DIST_THRESHOLD){
             beginLoop(label);
 
             // Calculate timestep:
@@ -673,7 +678,7 @@ public class Auton_Basic extends LinearOpMode {
         double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
         String label = String.format("autoRotateTo(%.1f, %.1f)", newHeadingDeg, Calibration.AUTON_ROTATE_SPEED);
 
-        while( opModeIsActive() && now - lastMisalignedTime < Calibration.AUTON_ANGLE_SETTLING){
+        while( opModeIsActive() && timesNotUp() && now - lastMisalignedTime < Calibration.AUTON_ANGLE_SETTLING){
             beginLoop(label);
 
             // Calculate timestep:
@@ -715,7 +720,7 @@ public class Auton_Basic extends LinearOpMode {
     /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
     public boolean autoAlignAndFire(double abortTime){
         boolean fired = false;
-        while( opModeIsActive() && runtime.seconds() < abortTime ) {
+        while( opModeIsActive() && timesNotUp() && runtime.seconds() < abortTime ) {
             beginLoop("autoAlignAndFire");
             AlineToAprilTag();
             if( aprilSensing.OnTarget ){
@@ -744,7 +749,7 @@ public class Auton_Basic extends LinearOpMode {
      *  Stops at 30 seconds to prevent penalties. */
     public void autoHoldDistances(double inchesRear, double inchesLeft)
     {
-        while( opModeIsActive() && runtime.seconds() < 30 ){
+        while( opModeIsActive() && timesNotUp() ){
             beginLoop("autoHoldDistances");
             holdPositionLeft(inchesRear, inchesLeft);
         }

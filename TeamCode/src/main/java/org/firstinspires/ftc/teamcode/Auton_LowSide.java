@@ -74,21 +74,21 @@ public class Auton_LowSide extends Auton_Basic {
         }
 
         // Step 4: Strafe back to loading zone, while winding winch.
-        while( opModeIsActive() && distances.getRight_inches() > 16 ){
+        while( opModeIsActive() && timesNotUp() && distances.getRight_inches() > 16 ){
             beginLoop("Step 4 (Strafe Right)");
             strafeAlongWall(Calibration.AUTON_STRAFE_DIST, Calibration.AUTON_STRAFE_SPEED);
         }
 
         // Step 5: Rotate 90 left so our back is to the wall
         localization.resetYaw();
-        while( opModeIsActive() && localization.getClockwiseAngle() > -90 ){
+        while( opModeIsActive() && timesNotUp() && localization.getClockwiseAngle() > -90 ){
             beginLoop("Step 5 (Turn Left)");
             drive(0, 0, -Calibration.AUTON_ROTATE_MOTOR_SPEED);
         }
 
         // Step 6: backup to wall and hold wall distances in case we get bumped
         // But stop at 30 seconds to avoid penalties
-        while( opModeIsActive() && runtime.seconds() < 30 ){
+        while( opModeIsActive() && timesNotUp() ){
             beginLoop("Step 6 (Park)");
             holdPositionLeft(Calibration.AUTON_DIST_PARKING, 12);
         }

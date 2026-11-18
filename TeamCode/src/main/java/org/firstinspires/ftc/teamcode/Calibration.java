@@ -11,6 +11,8 @@ public final class Calibration {
 
     // Autonomous behavior calibrations:
 
+    /** Seconds: Stop all movement after this amount of time to avoid penalties */
+    public static final double AUTON_TIME_LIMIT = 30;
     /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
     public static final double AUTON_STRAFE_SPEED = 0.3;
     /** MotorSpeed: Default translation speed for autoSlideTo() operations */

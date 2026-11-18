@@ -91,13 +91,13 @@ public class Auton_High_Side extends Auton_Basic {
         }
 
         // Step 6: Strafe along left wall until we're 1 meter from the far wall
-        while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
+        while( opModeIsActive() && timesNotUp() && distances.getLeft_mm() > 1000 ){
             beginLoop("Step 6 (Strafe Left Again)");
             strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
         }
 
         // Step 7: backup to wall and hold wall distance in case we get bumped (but stop at 30 sec so no penalties)
-        while( opModeIsActive()  ){
+        while( opModeIsActive() && timesNotUp() ){
             beginLoop("Step 7 (Park)");
             strafeAlongWall(Calibration.AUTON_DIST_PARKING, 0);
         }
