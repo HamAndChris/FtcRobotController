@@ -147,6 +147,7 @@ public class TeleopRedTeam extends OpMode {
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         winchMotor.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor1.setDirection(DcMotor.Direction.REVERSE);
         intakeMotor2.setDirection(DcMotor.Direction.REVERSE);
 
         // Enable encoder velocity drive mode:

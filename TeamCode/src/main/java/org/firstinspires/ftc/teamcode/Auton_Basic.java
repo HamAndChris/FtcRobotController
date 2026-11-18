@@ -133,6 +133,7 @@ public class Auton_Basic extends LinearOpMode {
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         winchMotor.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor1.setDirection(DcMotor.Direction.REVERSE);
         intakeMotor2.setDirection(DcMotor.Direction.REVERSE);
 
         frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
