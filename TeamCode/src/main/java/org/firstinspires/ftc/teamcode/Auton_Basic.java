@@ -341,6 +341,16 @@ public class Auton_Basic extends LinearOpMode {
         drive(newForward, newRight, rotate);
     }
 
+    /** Auto loop to strafe left along the back wall until the left distance sensor detects we're close to left wall */
+    void autoStrafeAlongWallToDistance(double wallDist_inches){
+        String label = String.format("autoStrafe to %.1f inches", wallDist_inches);
+
+        while( opModeIsActive() && timesNotUp() && distances.getLeft_inches() > wallDist_inches ){
+            beginLoop(label);
+            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
+        }
+    }
+
     // Apply motor torques to hold the desired distance from rear wall and left distance sensor
     void holdPositionLeft(double wallDist_inches, double leftDist_inches)
     {
@@ -755,6 +765,21 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
+    /** Auto loop to hold the desired distance from a rear wall, using distance sensors.
+     *  Stops at 30 seconds to prevent penalties. */
+    public void autoHoldDistance(double inchesRear) {
+        String label = String.format("autoHoldDistance, %.1f inches", inchesRear);
+        while( opModeIsActive() && timesNotUp() ){
+            beginLoop(label);
+            strafeAlongWall(inchesRear, 0);
+        }
+    }
+
+    /** Helper function to check the April sensor and return true if the hive is tipped up */
+    public boolean checkIfHiveIsTippedUp(){
+        aprilSensing.performSensing(0,0,0);
+        return aprilSensing.Detected;
+    }
 
     /*
      *  Method to perform a relative move, based on encoder counts.

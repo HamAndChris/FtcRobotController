@@ -5,8 +5,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import java.util.List;
 
 import org.firstinspires.ftc.robotcore.external.navigation.*;
-import org.firstinspires.ftc.teamcode.Calibration;
-
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -108,8 +106,8 @@ public class AprilSensing {
                         pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw());
 
                 // Find the hive that's the correct color, and tipped upwards (not upside down)
-                if( name.contains(TeamColor) && Math.abs(detection.ftcPose.roll) < 90 ){
-                    Rotate = (Calibration.APRIL_TARGET_YAW - detection.ftcPose.bearing) // was previously using "yaw". Verify this still works.
+                if( name.contains(TeamColor) && hiveIsTippedUp(clusterDet) ){
+                    Rotate = (Calibration.APRIL_TARGET_BEARING - detection.ftcPose.bearing)
                             * Calibration.APRIL_YAW_GAIN_P;
                     Forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
                             * -Calibration.APRIL_DIST_GAIN_P;
@@ -158,16 +156,18 @@ public class AprilSensing {
 
     /** Determine whether it is safe to use this April tag cluster to update field position */
     private boolean robotPoseValid(AprilTagClusterDetection cluster){
-        String name = cluster.metadata.name;
         // Need to make sure this hive is a good detection, the right color, tipped up, and not bogus
         Position pos = cluster.robotPose.getPosition();
         YawPitchRollAngles orx = cluster.robotPose.getOrientation();
-        return name.contains(TeamColor)                        // Correct color
-                && Math.abs(cluster.ftcPose.roll) < 90    // Hive is tipped up
-                && cluster.percentClusterFound > 99      // All 4 APRIL tags are detected
-                && Math.abs(pos.z) < 6                      // Valid robot pose (near the floor)
-                && Math.abs(orx.getPitch()) < 5            // Valid robot pose (robot upright)
-                && Math.abs(orx.getRoll()) < 5;            // Valid robot pose (robot upright)
+        return cluster.percentClusterFound > 99   // All 4 APRIL tags are detected
+                && Math.abs(pos.z) < 6            // Valid robot pose (near the floor)
+                && Math.abs(orx.getPitch()) < 5   // Valid robot pose (robot upright)
+                && Math.abs(orx.getRoll()) < 5;   // Valid robot pose (robot upright)
     }
 
+    /** Determine whether the detected hive is in the "up" position */
+    private boolean hiveIsTippedUp(AprilTagClusterDetection cluster){
+        return Math.abs(cluster.ftcPose.roll) < 90  // Not reading hive from wrong side
+                && cluster.ftcPose.pitch > 20;      // Tipped sufficiently upward // TODO: Find the correct value for this!
+    }
 }
