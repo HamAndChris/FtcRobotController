@@ -15,7 +15,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 public class Localization {
-    public Pose2D pose = new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0);
     Telemetry telemetry;
     DcMotorEx frontLeft, frontRight, backLeft, backRight;
     IMU imu;
@@ -85,7 +84,7 @@ public class Localization {
         double r = Math.hypot(right, forward);
 
         // Second, rotate angle by the angle the robot is pointing
-        theta = AngleUnit.normalizeRadians(theta - pose.getHeading(AngleUnit.RADIANS));
+        theta = AngleUnit.normalizeRadians(theta - heading);
 
         // Third, convert back to Cartesian
         newForward = r * Math.sin(theta);
@@ -96,12 +95,12 @@ public class Localization {
 
     // Get the yaw angle from the IMU, inverted so that positive = RIGHT
     public double getClockwiseAngle(){
-        return -pose.getHeading(AngleUnit.DEGREES);
+        return - Math.toDegrees(heading);
     }
 
     // Return the current yaw angle in radians
     public double getYawRadians(){
-        return pose.getHeading(AngleUnit.RADIANS);
+        return heading;
     }
 
     // This may require more steps in the future:
@@ -131,8 +130,8 @@ public class Localization {
         // Heading comes from the IMU, not from the wheels
         // This is the ONLY IMU (I2C) read per loop.
         rawYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);  // CCW positive
-        double newHeading = wrapAngle(rawYaw + headingOffset);
-        double dTheta = wrapAngle(newHeading - lastHeading);
+        heading = wrapAngle(rawYaw + headingOffset);
+        double dTheta = wrapAngle(heading - lastHeading);
 
         // Integrate along a constant-curvature arc (more accurate than straight-line
         // when the robot is turning while it moves).

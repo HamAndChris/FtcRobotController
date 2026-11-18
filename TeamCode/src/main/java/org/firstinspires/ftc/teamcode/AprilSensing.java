@@ -87,12 +87,12 @@ public class AprilSensing {
                             * Calibration.APRIL_YAW_GAIN_P;
                     Forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
                             * -Calibration.APRIL_DIST_GAIN_P;
-                    Right = 0;
+                    //Right = 0;
                     telemetry.addData("Rotate/Forward", "%3.2f / %3.2f", Rotate, Forward);
 
                     // Allow strafing, with rotation added:
-                    double rotationRadius = 24; // inches
-                    double rightSpeed = right * Calibration.MAX_SPEED_INCHES_PER_S;
+                    double rotationRadius = 30; // inches
+                    double rightSpeed = right * Calibration.MAX_SPEED_INCHES_PER_S / 5; // fudge factor
                     double extraRotate = -Math.asin(rightSpeed/rotationRadius);
                     Rotate += extraRotate;
 

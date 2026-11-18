@@ -264,6 +264,7 @@ public class TeleopRedTeam extends OpMode {
             else {
                 drive(forward, right, rotate);
             }
+
         }
 
         /* ************* Winch State Machine *********** */
@@ -520,9 +521,12 @@ public class TeleopRedTeam extends OpMode {
 
 
         // Apply rate limits to smooth out robot motion:
-        forwardLimited = applyRateLimit(forward, forwardLimited, Calibration.STICK_RATE_LIMIT);
-        rightLimited   = applyRateLimit(right,   rightLimited,   Calibration.STICK_RATE_LIMIT);
-        rotateLimited  = applyRateLimit(rotate,  rotateLimited,  Calibration.STICK_RATE_LIMIT);
+//        forwardLimited = applyRateLimit(forward, forwardLimited, Calibration.STICK_RATE_LIMIT);
+//        rightLimited   = applyRateLimit(right,   rightLimited,   Calibration.STICK_RATE_LIMIT);
+//        rotateLimited  = applyRateLimit(rotate,  rotateLimited,  Calibration.STICK_RATE_LIMIT);
+        forwardLimited = forward;
+        rightLimited = right;
+        rotateLimited = rotate;
 
         // This calculates the power needed for each wheel based on the amount of forward,
         // strafe right, and rotate
