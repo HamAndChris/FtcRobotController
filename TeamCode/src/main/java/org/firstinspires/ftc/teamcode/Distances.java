@@ -166,7 +166,7 @@ public class Distances {
 //        }
         lastWallAngleValid = WallAngleValid;
 
-        telemetry.addData("Rear Lasers", "%.1f mm, %.1f mm", distance_mm1, distance_mm2);
-        telemetry.addData("Wall", "%.1f mm / %.1f inch, %.1f deg", WallDist_mm, WallDist_inches, WallAngle_Deg);
+        telemetry.addData("Rear Lasers", "%.1f, %.1f mm", distance_mm1, distance_mm2);
+        telemetry.addData("Wall", "%.1f inch, %.1f deg", WallDist_inches, WallAngle_Deg);
     }
 }

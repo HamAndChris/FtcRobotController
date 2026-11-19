@@ -97,11 +97,12 @@ public class Auton_Basic extends LinearOpMode {
     private final Deque<Double> timestamps = new ArrayDeque<>();
     private static final int FPS_SAMPLES = 3;
 
-    // Default team color:
+    // Team alliance color (now switchable during init):
     public String teamColor() {
         return redTeam ? "RED" : "BLUE";
     }
-    private boolean redTeam = false; // Now switchable
+    private boolean redTeam = false, teamChosen = false;
+    private static final String KEY_REDTEAM = "LastTeamRed";
 
     // Helper to stop all "auto loop" auton modes once time is up:
     boolean timesNotUp(){
@@ -175,48 +176,56 @@ public class Auton_Basic extends LinearOpMode {
 
         /* ********** Keep the winch wound while we wait for user to press START ************ */
 
-        while( opModeInInit() ){
-            beginLoop("Choose a Team");
-            telemetry.addLine();
-            telemetry.addLine("****************************");
-            telemetry.addLine("*");
-            telemetry.addLine("*  ( X ) = BLUE team");
-            telemetry.addLine("*");
-            telemetry.addLine("*             RED team = ( B )");
-            telemetry.addLine("*");
-            telemetry.addLine("****************************");
-            telemetry.addLine();
-            telemetry.addData("Description", modeDescription());
-            telemetry.addData("Placement", placementInstructions());
+        // If we've already set the team color, allow user to confirm. Otherwise, encourage them to choose.
+        Boolean prevRedTeam = (Boolean) blackboard.get(KEY_REDTEAM);
+        if( prevRedTeam != null ){
+            teamChosen = true;
+            redTeam = prevRedTeam;
+        }
 
-            // Blink red/blue while we wait for user to select a team color with the gamepad.
-            // If they press Start without choosing one, it'll be whatever color was lit when they pressed it.
-            double partial = runtime.seconds() % 0.8;
-            redTeam = (partial > 0.4);
-            setLEDTeamColor();
-            if( gamepad1.b ){
-                redTeam = true; // B button is red so it sets red team
-                break;
+        while( opModeInInit() ){
+            beginLoop("Waiting for Start");
+            //telemetry.addData("Description", modeDescription());
+            telemetry.addLine();
+            telemetry.addData("Placement", placementInstructions());
+            telemetry.addLine();
+
+            telemetry.addLine("*****************************************");
+            telemetry.addLine("*   Select Team with Driver Gamepad");
+            if (teamChosen) {
+                telemetry.addData("*        Selected", teamColor());
             }
-            else if( gamepad1.x ){
-                redTeam = false; // X button is blue so it sets blue team
-                break;
+            telemetry.addLine("*");
+            telemetry.addLine("*             ( X )                  ( B )");
+            telemetry.addLine("*            BLUE                 RED");
+            telemetry.addLine("*****************************************");
+
+            if( teamChosen ){
+                setLEDTeamColor();
+            }
+            else {
+                // Blink LED while we wait for user to select a team color with the gamepad.
+                double partial = runtime.seconds() % 0.8;
+                setLED( (partial > 0.4) ? Calibration.LED_RED : Calibration.LED_BLUE );
+            }
+
+            // Accept driver gamepad input to select the color
+            if (gamepad1.b) {
+                // B button is red so it sets red team
+                redTeam = true;
+                teamChosen = true;
+                blackboard.put(KEY_REDTEAM, true); // Save in case we forget to set it next time
+            } else if (gamepad1.x) {
+                // X button is blue so it sets blue team
+                redTeam = false;
+                teamChosen = true;
+                blackboard.put(KEY_REDTEAM, false); // Save in case we forget to set it next time
             }
         }
 
         // Set the LED to team color, and update the April Sensing logic:
         setLEDTeamColor();
         aprilSensing.setTeamColor(teamColor());
-
-        // Now just wait for START button from driver hub
-        while( opModeInInit() ){
-            beginLoop("Waiting for Start");
-            telemetry.addLine();
-            telemetry.addData("Team chosen", teamColor() );
-            telemetry.addLine();
-            telemetry.addData("Description", modeDescription());
-            telemetry.addData("Placement", placementInstructions());
-        }
 
 
         /* *********** Call doAuton, which will be overridden by other auton modes ********** */
@@ -307,15 +316,16 @@ public class Auton_Basic extends LinearOpMode {
 
     // Helper to rotate the robot to a desired angle (positive = RIGHT), while optionally strafing and driving.
     // Returns true when angle has been achieved.
-    // NOTE: IMU reading wraps around at 180 degrees, so never exceed that and always call imu.reset() beforehand
-    boolean rotateToIMUAngle(double targetAngle, double right, double forward)
+    // NOTE: IMU reading wraps around at 180 degrees, so never exceed that and always call localization.resetYaw() beforehand
+    boolean rotateToClockwiseAngle(double targetAngle, double right, double forward)
     {
         double currentAngle = localization.getClockwiseAngle();
-        // Apply rotation control loop:
+        // Apply basic rotation control loop:
         double rotate = (targetAngle - currentAngle) * Calibration.AUTON_ANGLE_GAIN_P;
+        rotate = Math.max(Math.min(rotate, Calibration.AUTON_ROTATE_MOTOR_SPEED), -Calibration.AUTON_ROTATE_MOTOR_SPEED); // Limit max command
         drive(forward, right, rotate);
 
-        // Return true if the angle is within 2 degrees for 0.5 seconds:
+        // Return true if the angle is within 2 degrees for 0.25 seconds:
         double now = runtime.seconds();
         if( Math.abs(targetAngle - currentAngle) > Calibration.AUTON_ANGLE_THRESH ){
             lastMisalignedTime = now;
@@ -469,7 +479,7 @@ public class Auton_Basic extends LinearOpMode {
             catapultState = CatapultState.IDLE;
         }
 
-        telemetry.addData("Winch State", catapultState.name());
+        //telemetry.addData("Winch State", catapultState.name());
     }
 
     // Helper function to speed up loop time

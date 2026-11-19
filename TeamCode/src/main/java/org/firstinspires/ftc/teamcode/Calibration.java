@@ -9,8 +9,10 @@ public final class Calibration {
     // Prevent instantiation
     private Calibration() {}
 
-    // Frequently used toggles:
+    // Frequently used values:
     public static final boolean SINGLE_GAMEPAD_MODE = false;
+    public static final boolean USE_FIELD_RELATIVE  = false;
+    public static final double  TELEOP_POWER_LEVEL = 1.0; // 1.0 = full speed
 
     // Autonomous behavior calibrations:
 

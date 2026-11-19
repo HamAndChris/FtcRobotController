@@ -31,17 +31,12 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -63,9 +58,9 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  *
  */
-@TeleOp(name = "Teleop: RED", group = "Robot")
+@TeleOp(name = "Teleop: Either Team", group = "Robot")
 //@Disabled
-public class TeleopRedTeam extends OpMode {
+public class Teleop_BothTeams extends OpMode {
     // Hardware objects declared here:
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
@@ -83,8 +78,6 @@ public class TeleopRedTeam extends OpMode {
     private Localization      localization;
 
     // Constants:
-    private static final double POWER_LEVEL = 1.0; // 1.0 = full speed
-    private boolean USE_FIELD_RELATIVE = false; // not constant anymore
 
     // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -100,6 +93,13 @@ public class TeleopRedTeam extends OpMode {
     private List<LynxModule> allHubs;
     private String modeString;
 
+    // Team alliance color (now switchable during init):
+    public String teamColor() {
+        return redTeam ? "RED" : "BLUE";
+    }
+    private boolean redTeam = false, teamChosen = false;
+    private static final String KEY_REDTEAM = "LastTeamRed";
+
     // Rate limiting variables:
     private double forwardLimited=0, rightLimited=0, rotateLimited=0, lastTime=0;
 
@@ -107,18 +107,17 @@ public class TeleopRedTeam extends OpMode {
     private volatile Gamepad operatorGamepad; // Gamepad used for function buttons
     double flowerBarPosition = 0.5;
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
-    double teamLEDColor, LEDColor;
+    double LEDColor;
     private double lastLaunchCommand = 0;  // Timestamp used for waitingForLaunch()
     private boolean lastRightStickButton = false;
-
-    // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
-    public String teamColor() {
-        return "RED";
-    }
 
     private void setIntakeMotors(double speed){
         intakeMotor1.setPower(speed);
         intakeMotor2.setPower(speed);
+    }
+
+    public double teamLEDColor(){
+        return (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
     }
 
     @Override
@@ -134,7 +133,6 @@ public class TeleopRedTeam extends OpMode {
         backRightDrive = hardwareMap.get(DcMotor.class, "BackRight");
         ledIndicator = hardwareMap.get(Servo.class, "Indicator");
         flowerBar    = hardwareMap.get(Servo.class, "FlowerBar");
-        teamLEDColor = (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
@@ -182,6 +180,13 @@ public class TeleopRedTeam extends OpMode {
             operatorGamepad = gamepad2;
             modeString = "Dual Gamepad Mode";
         }
+
+        // If we've already set the team color, allow user to confirm. Otherwise, encourage them to choose.
+        Boolean prevRedTeam = (Boolean) blackboard.get(KEY_REDTEAM);
+        if( prevRedTeam != null ){
+            teamChosen = true;
+            redTeam = prevRedTeam;
+        }
     }
 
     @Override
@@ -196,6 +201,40 @@ public class TeleopRedTeam extends OpMode {
 
         // Keep the winch wound when the user initialized the robot
         doWinchStatemachine(false);
+
+        // Allow user to set alliance team, or use previously set value
+        telemetry.addLine();
+        telemetry.addLine("*****************************************");
+        telemetry.addLine("*   Select Team with Driver Gamepad");
+        if (teamChosen) {
+            telemetry.addData("*        Selected", teamColor());
+        }
+        telemetry.addLine("*");
+        telemetry.addLine("*             ( X )                  ( B )");
+        telemetry.addLine("*            BLUE                 RED");
+        telemetry.addLine("*****************************************");
+
+        if( teamChosen ){
+            setLEDTeamColor();
+        }
+        else {
+            // Blink LED while we wait for user to select a team color with the gamepad.
+            double partial = time % 0.8;
+            setLED( (partial > 0.4) ? Calibration.LED_RED : Calibration.LED_BLUE );
+        }
+
+        // Accept driver gamepad input to select the color
+        if (gamepad1.b) {
+            // B button is red so it sets red team
+            redTeam = true;
+            teamChosen = true;
+            blackboard.put(KEY_REDTEAM, true); // Save in case we forget to set it next time
+        } else if (gamepad1.x) {
+            // X button is blue so it sets blue team
+            redTeam = false;
+            teamChosen = true;
+            blackboard.put(KEY_REDTEAM, false); // Save in case we forget to set it next time
+        }
         telemetry.update();
     }
 
@@ -218,10 +257,11 @@ public class TeleopRedTeam extends OpMode {
         // Blink LED for our team alliance, and blink faster when there's 10 seconds left
         // Note: This may be overwritten by AlineToAprilTag
         double partial=(time-Math.floor(time));
-        if( time < 110
-                || (time < 115 && partial > 0.5)
-                || (time < 120 && partial % 0.5 > 0.25) ) {
-            LEDColor = teamLEDColor;
+        if( time < 112
+                || (time < 116 && partial > 0.5)
+                || (time < 120 && partial % 0.5 > 0.25)
+                || (time > 125) ) {
+            LEDColor = teamLEDColor();
         }
         else {
             LEDColor = Calibration.LED_OFF;
@@ -233,21 +273,16 @@ public class TeleopRedTeam extends OpMode {
             // If right stick button is pressed, reset the "field relative" orientation.
             localization.resetYaw();
         }
-        if( gamepad1.left_stick_button && !lastRightStickButton ){
-            // Left stick button switches between "field relative" and "normal" mode
-            USE_FIELD_RELATIVE = !USE_FIELD_RELATIVE;
-        }
-        lastRightStickButton = gamepad1.left_stick_button;
 
         /* *************** Chassis Movement Controls *************** */
 
         // Get chassis stick inputs, applying parabolic transform:
-        double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * POWER_LEVEL;
-        double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * POWER_LEVEL;
-        double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * POWER_LEVEL;
+        double forward = -(gamepad1.left_stick_y * Math.abs(gamepad1.left_stick_y)) * Calibration.TELEOP_POWER_LEVEL;
+        double right = gamepad1.left_stick_x * Math.abs(gamepad1.left_stick_x) * Calibration.TELEOP_POWER_LEVEL;
+        double rotate = gamepad1.right_stick_x * Math.abs(gamepad1.right_stick_x) * Calibration.TELEOP_POWER_LEVEL;
 
         // Apply field relative conversion:
-        if( USE_FIELD_RELATIVE ){
+        if( Calibration.USE_FIELD_RELATIVE ){
             localization.convertFieldRelative(forward, right, rotate);
             forward = localization.newForward;
             right = localization.newRight;
@@ -330,6 +365,15 @@ public class TeleopRedTeam extends OpMode {
     /** Helper function to set intake motors in reverse */
     void setIntakeOut(){
         setIntakeMotors(-1.0);
+    }
+
+    /** Helper function to set LED color. Try not to change more than once per loop. */
+    void setLED(double color){
+        setPositionCached(ledIndicator, color);
+    }
+    /** Helper function to set LED color to match configured team. Try not to change more than once per loop. */
+    void setLEDTeamColor(){
+        setLED( (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED );
     }
 
     // Record a call and report telemetry the calculated calls-per-second over the last few calls.
@@ -474,7 +518,7 @@ public class TeleopRedTeam extends OpMode {
             LEDColor = Calibration.LED_AIMING;
         }
         else {
-            LEDColor = teamLEDColor;
+            LEDColor = teamLEDColor();
         }
     }
 
