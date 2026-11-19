@@ -32,18 +32,18 @@ public class AprilSensing {
         // Set camera orientation so we can use robotPose for localization.
         // See: https://ftc-docs.firstinspires.org/en/latest/apriltag/vision_portal/apriltag_localization/apriltag-localization.html
 
-        // TODO: Measure these!
+        // Measured 11/18/2026
 
         // Origin location: Center of the robot at field height
         // Axes orientation: +x right, +y forward, +z upward
-        Position cameraPosition = new Position(DistanceUnit.INCH, 3.9, 8.5, 11.5, 0);
+        Position cameraPosition = new Position(DistanceUnit.INCH, 3.9, 8.5, 12.125, 0);
 
         // If all values are zero (no rotation), that implies the camera is pointing straight up.
         // In most cases, you’ll need to set the pitch to -90 degrees (rotation about the x-axis),
         // meaning the camera is horizontal. Use a yaw of 0 if the camera is pointing forwards,
         // +90 degrees if it’s pointing straight left, -90 degrees for straight right, etc.
         // You can also set the roll to +/-90 degrees if it’s vertical, or 180 degrees if it’s upside-down.
-        YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES, 0, -45, 0, 0);
+        YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES, 0, -90+38, 0, 0);
 
         // Initialize camera:
         //aprilTag = AprilTagProcessor.easyCreateWithDefaults();
@@ -167,7 +167,7 @@ public class AprilSensing {
 
     /** Determine whether the detected hive is in the "up" position */
     private boolean hiveIsTippedUp(AprilTagClusterDetection cluster){
-        return Math.abs(cluster.ftcPose.roll) < 90  // Not reading hive from wrong side
-                && cluster.ftcPose.pitch > 20;      // Tipped sufficiently upward // TODO: Find the correct value for this!
+        return Math.abs(cluster.ftcPose.roll) < 90;  // Not reading hive from wrong side
+              //  && cluster.ftcPose.pitch > 20;      // Tipped sufficiently upward // TODO: Find the correct value for this!
     }
 }

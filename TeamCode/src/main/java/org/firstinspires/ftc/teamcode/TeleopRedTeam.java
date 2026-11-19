@@ -89,7 +89,7 @@ public class TeleopRedTeam extends OpMode {
 
     // Constants:
     private static final double POWER_LEVEL = 1.0; // 1.0 = full speed
-    private static final boolean USE_FIELD_RELATIVE = true;
+    private boolean USE_FIELD_RELATIVE = false; // not constant anymore
 
     // Winch state machine variables:
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
@@ -114,6 +114,7 @@ public class TeleopRedTeam extends OpMode {
     Dictionary<HardwareDevice, Double> cachedMotorPowers = new Hashtable<>();
     double teamLEDColor, LEDColor;
     private double lastLaunchCommand = 0;  // Timestamp used for waitingForLaunch()
+    private boolean lastRightStickButton = false;
 
     // Which APRIL tag to aim for. Overridden in subclass TeleopBlueTeam.java
     public String teamColor() {
@@ -179,13 +180,12 @@ public class TeleopRedTeam extends OpMode {
         }
 
         // Decide if we're using one gamepad or two:
-        if( isGamepadConnected(gamepad2) ){
-            operatorGamepad = gamepad2;
-            modeString = "Dual Gamepad Mode";
-        }
-        else {
+        if( Calibration.SINGLE_GAMEPAD_MODE ){
             operatorGamepad = gamepad1;
             modeString = "Single Gamepad Mode";
+        } else {
+            operatorGamepad = gamepad2;
+            modeString = "Dual Gamepad Mode";
         }
     }
 
@@ -238,6 +238,11 @@ public class TeleopRedTeam extends OpMode {
             // If right stick button is pressed, reset the "field relative" orientation.
             localization.resetYaw();
         }
+        if( gamepad1.left_stick_button && !lastRightStickButton ){
+            // Left stick button switches between "field relative" and "normal" mode
+            USE_FIELD_RELATIVE = !USE_FIELD_RELATIVE;
+        }
+        lastRightStickButton = gamepad1.left_stick_button;
 
         /* *************** Chassis Movement Controls *************** */
 

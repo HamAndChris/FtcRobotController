@@ -25,9 +25,9 @@ public class Localization {
 
     // Tuning multipliers. Mecanum wheels slip, especially when strafing.
     // Drive 100" and multiply by (100 / measured). Do the same for a 100" strafe.
-    public static final double FORWARD_MULTIPLIER = 1.0;
-    public static final double STRAFE_MULTIPLIER  = 1.0;
-    public static final double ROTATE_MULTIPLIER  = 0.6;
+    public static final double FORWARD_MULTIPLIER = 1.005;
+    public static final double STRAFE_MULTIPLIER  = 0.92;
+    public static final double ROTATE_MULTIPLIER  = 0.38;
 
 
     // Internal state variables:
@@ -112,7 +112,8 @@ public class Localization {
 
     // This may require more steps in the future:
     public void resetYaw(){
-        imu.resetYaw();
+        //imu.resetYaw();
+        resetHeading();
     }
 
     // Call this once per loop:
@@ -286,7 +287,7 @@ public class Localization {
     public static double getRotateCommand(double radiansPerSec){
         double trackWidth_inch = 16;
         double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
-        double desiredMotorSpeed = desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
+        double desiredMotorSpeed = -desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
         return -Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
     }
 

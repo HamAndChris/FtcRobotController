@@ -9,6 +9,9 @@ public final class Calibration {
     // Prevent instantiation
     private Calibration() {}
 
+    // Frequently used toggles:
+    public static final boolean SINGLE_GAMEPAD_MODE = false;
+
     // Autonomous behavior calibrations:
 
     /** Seconds: Stop all movement after this amount of time to avoid penalties */
@@ -91,7 +94,7 @@ public final class Calibration {
 
     // Flower Bar positions:
     public static final double FLOWER_BAR_UP = 0.18;
-    public static final double FLOWER_BAR_DOWN = 0.55;
+    public static final double FLOWER_BAR_DOWN = 0.65;
 
 
     // Calculate the COUNTS_PER_INCH for your specific drive train.

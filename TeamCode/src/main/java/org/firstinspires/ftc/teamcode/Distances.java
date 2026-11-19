@@ -9,6 +9,9 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Distances {
+    // Global disable:
+    private static final boolean DISABLE_I2C_SENSORS = true;
+
     // Settings:
     private static final int FILTER_SIZE = 2;
     private double[][] distanceSamples = new double[4][FILTER_SIZE];
@@ -35,8 +38,14 @@ public class Distances {
     {
         laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
         laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
-        distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
-        distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
+        if( DISABLE_I2C_SENSORS ) {
+            distanceLeft = null;
+            distanceRight = null;
+        }
+        else {
+            distanceLeft = hardwareMap.get(DistanceSensor.class, "Distance1");
+            distanceRight = hardwareMap.get(DistanceSensor.class, "Distance2");
+        }
         this.telemetry = telemetry;
     }
 
@@ -44,6 +53,9 @@ public class Distances {
     // This improves performance because I2C reads slow everything down.
     public double getRight_mm(double sampleRate_Hz)
     {
+        if( DISABLE_I2C_SENSORS ){
+            return 0;
+        }
         double samplePeriod = 1.0/sampleRate_Hz;
         double now = runtime.seconds();
         if( now - lastRightSample >= samplePeriod ){
@@ -62,6 +74,9 @@ public class Distances {
     // This improves performance because I2C reads slow everything down.
     public double getLeft_mm(double sampleRate_Hz)
     {
+        if( DISABLE_I2C_SENSORS ){
+            return 0;
+        }
         double samplePeriod = 1.0/sampleRate_Hz;
         double now = runtime.seconds();
         if( now - lastLeftSample >= samplePeriod ){

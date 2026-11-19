@@ -110,7 +110,7 @@ public class Utility_DistanceCal extends Auton_Basic {
             else if( targetRight != 0 ){
                 // Calculate forward command for smooth deceleration using kinematics equation:
                 double distRight = targetRight - localization.getY();
-                double right     = Math.sqrt( 2 * ACCEL * distRight );
+                double right     = Math.sqrt( 2 * ACCEL * Math.abs(distRight) ) * Math.signum(distRight);
                 // Use rate limiter to apply smooth _acceleration_ and cap to desired speed:
                 currentRight = applyLimits(right, currentRight, ACCEL, SPEED, dt);
             }

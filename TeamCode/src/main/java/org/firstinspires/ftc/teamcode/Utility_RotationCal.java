@@ -32,7 +32,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.Utility;
 
 
-@Utility(name="Calibrate Distance")
+@Utility(name="Calibrate Rotation")
 public class Utility_RotationCal extends Auton_Basic {
 
     public static final double ROTATE_RADPS  = 1.0; // commanded rotation speed
