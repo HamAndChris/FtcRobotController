@@ -32,15 +32,11 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
-import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayDeque;
@@ -67,13 +63,9 @@ public class Auton_Basic extends LinearOpMode {
     DcMotor         intakeMotor1;
     DcMotor         intakeMotor2;
     DcMotor         winchMotor;
-    AnalogInput     laserAnalog1, laserAnalog2;
-    DistanceSensor  distanceRight, distanceLeft;
     DigitalChannel  magnetSensor;
     Servo           ledIndicator = null;
     Servo           flowerBar = null;
-    IMU             imu;
-    VisionPortal    visionPortal;
     private List<LynxModule> allHubs;
 
     // Helper files:
@@ -111,13 +103,16 @@ public class Auton_Basic extends LinearOpMode {
 
     /** Placement instructions to show on Driver Hub during initialization. Other auton modes should override this. */
     public String placementInstructions(){
-        return( "On driver wall, left of parking zone" );
+        return( "On driver wall, just left of parking zone" );
     }
 
     /** Description to show on Driver Hub during initialization. Other auton modes should override this. */
     public String modeDescription(){
-        return String.format("Moves forward %.1f inches, right %.1f inches", Calibration.AUTON_DIST_STEP1, 24.0);
+        return String.format("Moves forward %.1f inches, right %.1f inches", Calibration.AUTON_DIST_STEP1, SLIDE_RIGHT_DIST);
     }
+
+    // Behavior for just this auton mode:
+    private static final double SLIDE_RIGHT_DIST = 12;
 
     @Override
     public void runOpMode() {
@@ -257,9 +252,9 @@ public class Auton_Basic extends LinearOpMode {
         
         // Step 2 slide right until we're 24 inches from the wall, then hold there so we don't get pushed out of the box
         // But stop at 30 seconds to avoid penalties
-        while( opModeIsActive() && runtime.seconds() < 30 ) {
+        while( opModeIsActive() && timesNotUp() ) {
             beginLoop("Step 2 (Parking)");
-            holdPositionLeft(Calibration.AUTON_DIST_PARKING, 24);
+            holdPositionLeft(Calibration.AUTON_DIST_PARKING, SLIDE_RIGHT_DIST);
         }
 
         // Done! Now runOpMode() will take over and disable drives and LED 
@@ -351,20 +346,48 @@ public class Auton_Basic extends LinearOpMode {
         drive(newForward, newRight, rotate);
     }
 
-    /** Auto loop to strafe left along the back wall until the left distance sensor detects we're close to left wall */
-    void autoStrafeAlongWallToDistance(double wallDist_inches){
-        String label = String.format("autoStrafe to %.1f inches", wallDist_inches);
+    /** Auto loop to strafe along the driver wall until the left distance sensor detects we're the correct distance from the left wall */
+    void autoStrafeAlongWallToDistance(double leftWallDist_inches){
+        String label = String.format("autoStrafe to %.1f inches", leftWallDist_inches);
 
-        while( opModeIsActive() && timesNotUp() && distances.getLeft_inches() > wallDist_inches ){
+        // Since we're not using the I2C distance sensors anymore, we just need to hope the localization is up to date:
+        double distance, currentSpeed = 0;
+        double lastTime = runtime.seconds();
+
+        do {
             beginLoop(label);
-            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
-        }
+            if( Calibration.DISABLE_I2C_DISTANCE_SENSORS ){
+                distance = localization.getX() - 9;
+            } else {
+                distance = distances.getLeft_inches();
+            }
+            double distanceToGo = leftWallDist_inches - distance;
+
+            // Calculate timestep:
+            double now = runtime.seconds();
+            double dt = now - lastTime;
+            lastTime = now;
+
+            // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
+            double speedToGo = Math.sqrt( 2 * Calibration.AUTON_ACCEL * Math.abs(distanceToGo) ) * Math.signum(distanceToGo);
+
+            // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
+            currentSpeed = applyLimits(speedToGo, currentSpeed, Calibration.AUTON_STRAFE_SPEED, Calibration.AUTON_STRAFE_SPEED, dt);
+            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, speedToGo);
+
+        } while( opModeIsActive() && timesNotUp() && Math.abs(distance - leftWallDist_inches) > Calibration.AUTON_DIST_THRESHOLD );
     }
 
     // Apply motor torques to hold the desired distance from rear wall and left distance sensor
     void holdPositionLeft(double wallDist_inches, double leftDist_inches)
     {
-        double right = (leftDist_inches*25.4 - distances.getLeft_mm()) * Calibration.LASER_DIST_GAIN_P;
+        double distance;
+        if( Calibration.DISABLE_I2C_DISTANCE_SENSORS ){
+            distance = localization.getX() - 9;
+        } else {
+            distance = distances.getLeft_inches();
+        }
+        double right = (leftDist_inches - distance) * 25.4 * Calibration.LASER_DIST_GAIN_P;
         right = Math.min(Math.max(right, -Calibration.LASER_DIST_MAXPOWER), Calibration.LASER_DIST_MAXPOWER); // Limit to max left/right command
 
         strafeAlongWall(wallDist_inches, right);
@@ -765,7 +788,7 @@ public class Auton_Basic extends LinearOpMode {
         return fired;
     }
 
-    /** Auto loop to hold the desired distance from a rear and left wall using distance sensors.
+    /** Auto loop to hold the desired distance from a rear and left wall using distance sensors (or odometry).
      *  Stops at 30 seconds to prevent penalties. */
     public void autoHoldDistances(double inchesRear, double inchesLeft)
     {
@@ -775,7 +798,7 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
-    /** Auto loop to hold the desired distance from a rear wall, using distance sensors.
+    /** Auto loop to hold the desired distance from a rear wall, using distance sensors (or odometry).
      *  Stops at 30 seconds to prevent penalties. */
     public void autoHoldDistance(double inchesRear) {
         String label = String.format("autoHoldDistance, %.1f inches", inchesRear);

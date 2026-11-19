@@ -14,6 +14,9 @@ public final class Calibration {
     public static final boolean USE_FIELD_RELATIVE  = false;
     public static final double  TELEOP_POWER_LEVEL = 1.0; // 1.0 = full speed
 
+    // Hardware changes:
+    public static final boolean DISABLE_I2C_DISTANCE_SENSORS = true;
+
     // Autonomous behavior calibrations:
 
     /** Seconds: Stop all movement after this amount of time to avoid penalties */
