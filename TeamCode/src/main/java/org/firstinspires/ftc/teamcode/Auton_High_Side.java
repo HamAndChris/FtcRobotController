@@ -50,6 +50,9 @@ public class Auton_High_Side extends Auton_Basic {
     @Override
     public void doAuton()
     {
+        // Set starting position as zero yaw so we can rotate after aiming:
+        localization.resetYaw();
+
         // Step 1: move forward a few inches
         while(opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_STEP1 && runtime.seconds() < 3) {
             beginLoop("Step 1 (Move forward)");
@@ -72,37 +75,34 @@ public class Auton_High_Side extends Auton_Basic {
         setLEDTeamColor(); // Reset LED to team color after april alignment
 
         // Step 3: Wait for catapult to finish launching
-        while(opModeIsActive() && waitingForLaunch() ) {
+        while( opModeIsActive() && waitingForLaunch() ) {
             beginLoop("Step 3 (Launch)");
         }
 
-        // Step 4: Strafe left from current wall distance until we're 1 meter from the wall
-        double startingWallDist = distances.WallDist_inches;
-        while( opModeIsActive() && distances.getLeft_mm() > 1000 ){
-            beginLoop("Step 4 (Strafe Left)");
-            strafeAlongWall(startingWallDist, -Calibration.AUTON_STRAFE_SPEED);
-        }
-
-        // Step 5: Rotate 90 degrees to the right, so dual distance sensors face the left wall
-        localization.resetYaw();
-        while( opModeIsActive() && localization.getClockwiseAngle() < 90 ){
-            beginLoop("Step 5 (Turn Right)");
+        // Step 4: Rotate 90 degrees to the right, so dual distance sensors face the left wall
+        while( opModeIsActive() && timesNotUp() && localization.getClockwiseAngle() < 90 ){
+            beginLoop("Step 4 (Turn Right)");
             drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_MOTOR_SPEED); // Rotate right while still strafing left
         }
 
-        // Step 6: Strafe along left wall until we're 1 meter from the far wall
-        while( opModeIsActive() && timesNotUp() && distances.getLeft_mm() > 1000 ){
-            beginLoop("Step 6 (Strafe Left Again)");
-            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
-        }
+//        // Step 5: Strafe along driver wall until we're 1 meter from the left wall'
+//        while( opModeIsActive() && timesNotUp() && distances.getLeft_mm() > 1000 ){
+//            beginLoop("Step 5 (Strafe Left)");
+//            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, -Calibration.AUTON_STRAFE_SPEED);
+//        }
+//
+//        // Step 7: backup to wall and hold wall distance in case we get bumped (but stop at 30 sec so no penalties)
+//        while( opModeIsActive() && timesNotUp() ){
+//            beginLoop("Step 7 (Park)");
+//            strafeAlongWall(Calibration.AUTON_DIST_PARKING, 0);
+//        }
 
-        // Step 7: backup to wall and hold wall distance in case we get bumped (but stop at 30 sec so no penalties)
+        // Step 5: Strafe along driver wall until we hit something or are stopped (but stop at 30 sec so no penalties)
         while( opModeIsActive() && timesNotUp() ){
-            beginLoop("Step 7 (Park)");
-            strafeAlongWall(Calibration.AUTON_DIST_PARKING, 0);
+            beginLoop("Step 5 (Parking)");
+            strafeAlongWall(Calibration.AUTON_DIST_PARKING, -Calibration.AUTON_STRAFE_SPEED);
         }
 
-        // Done! Now Auton_Basic.java will take over and disable drives and LED 
-        return;
+        // Done! Now Auton_Basic.java will take over and disable drives and LED
     }
 }

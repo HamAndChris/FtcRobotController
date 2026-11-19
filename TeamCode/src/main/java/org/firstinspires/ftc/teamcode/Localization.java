@@ -172,7 +172,7 @@ public class Localization {
         robotVyInPerSec = (-vFl + vFr + vBl - vBr) / 4.0 * STRAFE_MULTIPLIER;
         if (dt > 1e-4) omegaRadPerSec = dTheta / dt;
 
-        telemetry.addData("Position (x/y/angle)", "%.1f / %.1f inch / %.1f deg", x, y, getHeadingDeg());
+        telemetry.addData("Position (x/y/angle)", "%.1f, %.1f inch, %.1f deg", x, y, getHeadingDeg());
     }
     // ----------------------- Setting the pose -----------------------
 

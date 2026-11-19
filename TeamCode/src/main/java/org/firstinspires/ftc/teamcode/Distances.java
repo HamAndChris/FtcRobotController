@@ -9,9 +9,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Distances {
-    // Global disable:
-    private static final boolean DISABLE_I2C_SENSORS = true;
-
     // Settings:
     private static final int FILTER_SIZE = 2;
     private double[][] distanceSamples = new double[4][FILTER_SIZE];
@@ -38,7 +35,7 @@ public class Distances {
     {
         laserAnalog1 = hardwareMap.get(AnalogInput.class, "LaserAnalog1");
         laserAnalog2 = hardwareMap.get(AnalogInput.class, "LaserAnalog2");
-        if( DISABLE_I2C_SENSORS ) {
+        if( Calibration.DISABLE_I2C_DISTANCE_SENSORS ) {
             distanceLeft = null;
             distanceRight = null;
         }
@@ -53,7 +50,7 @@ public class Distances {
     // This improves performance because I2C reads slow everything down.
     public double getRight_mm(double sampleRate_Hz)
     {
-        if( DISABLE_I2C_SENSORS ){
+        if( Calibration.DISABLE_I2C_DISTANCE_SENSORS ){
             return 0;
         }
         double samplePeriod = 1.0/sampleRate_Hz;
@@ -74,7 +71,7 @@ public class Distances {
     // This improves performance because I2C reads slow everything down.
     public double getLeft_mm(double sampleRate_Hz)
     {
-        if( DISABLE_I2C_SENSORS ){
+        if( Calibration.DISABLE_I2C_DISTANCE_SENSORS ){
             return 0;
         }
         double samplePeriod = 1.0/sampleRate_Hz;
@@ -166,7 +163,7 @@ public class Distances {
 //        }
         lastWallAngleValid = WallAngleValid;
 
-        telemetry.addData("Rear Lasers", "%.1f mm, %.1f mm", distance_mm1, distance_mm2);
-        telemetry.addData("Wall", "%.1f mm / %.1f inch, %.1f deg", WallDist_mm, WallDist_inches, WallAngle_Deg);
+        telemetry.addData("Rear Lasers", "%.1f, %.1f mm", distance_mm1, distance_mm2);
+        telemetry.addData("Wall", "%.1f inch, %.1f deg", WallDist_inches, WallAngle_Deg);
     }
 }
