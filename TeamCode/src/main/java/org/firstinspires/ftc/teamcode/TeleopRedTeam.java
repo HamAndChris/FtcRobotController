@@ -74,16 +74,11 @@ public class TeleopRedTeam extends OpMode {
     DcMotor winchMotor;
     DcMotor intakeMotor1;
     DcMotor intakeMotor2;
-    AnalogInput laserAnalog1, laserAnalog2;
-    DistanceSensor distanceRight, distanceLeft;
     DigitalChannel magnetSensor;
     Servo ledIndicator, flowerBar;
-    IMU imu;
 
     // Helper files:
     private Distances         distances;
-    private AprilTagProcessor aprilTag;
-    private VisionPortal      visionPortal;
     private AprilSensing      aprilSensing;
     private Localization      localization;
 

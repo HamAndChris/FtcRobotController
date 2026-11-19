@@ -95,8 +95,8 @@ public class Localization {
         double theta = AngleUnit.normalizeRadians(directionRads - heading);
 
         // Third, convert back to Cartesian
-        newForward = speed * Math.sin(theta);
-        newRight = speed * Math.cos(theta);
+        newForward = speed * Math.cos(theta);
+        newRight = speed * Math.sin(theta);
     }
 
 
