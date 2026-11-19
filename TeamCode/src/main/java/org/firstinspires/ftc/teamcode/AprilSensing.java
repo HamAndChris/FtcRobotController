@@ -104,6 +104,8 @@ public class AprilSensing {
                 YawPitchRollAngles orx = detection.robotPose.getOrientation();
                 telemetry.addData("Robot","XYZ %6.1f %6.1f %6.1f RPY %6.1f %6.1f %6.1f",
                         pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw());
+                // Debugging: also print hive field position
+                telemetry.addData("Hive","XYZ %s", clusterDet.metadata.fieldPosition);
 
                 // Find the hive that's the correct color, and tipped upwards (not upside down)
                 if( name.contains(TeamColor) && hiveIsTippedUp(clusterDet) ){
@@ -150,6 +152,7 @@ public class AprilSensing {
         telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
         telemetry.addLine("RBE = Range, Bearing & Elevation");
         telemetry.addLine("Robot = Field relative position and orientation");
+        telemetry.addLine("Hive = Reported field position of hive");
 
         telemetry.update();
     }   // end method telemetryAprilTag()
@@ -159,7 +162,7 @@ public class AprilSensing {
         // Need to make sure this hive is a good detection, the right color, tipped up, and not bogus
         Position pos = cluster.robotPose.getPosition();
         YawPitchRollAngles orx = cluster.robotPose.getOrientation();
-        return cluster.percentClusterFound > 99   // All 4 APRIL tags are detected
+        return cluster.percentClusterFound > 74   // At least 3 APRIL tags are detected
                 && Math.abs(pos.z) < 6            // Valid robot pose (near the floor)
                 && Math.abs(orx.getPitch()) < 5   // Valid robot pose (robot upright)
                 && Math.abs(orx.getRoll()) < 5;   // Valid robot pose (robot upright)
