@@ -96,7 +96,7 @@ public class Localization {
 
         // Third, convert back to Cartesian
         newForward = speed * Math.cos(theta);
-        newRight = speed * Math.sin(theta);
+        newRight = -speed * Math.sin(theta); // Right is flipped because Y is meant to be left from X
     }
 
 
