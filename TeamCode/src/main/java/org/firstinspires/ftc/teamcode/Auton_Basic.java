@@ -656,7 +656,7 @@ public class Auton_Basic extends LinearOpMode {
             currentSpeed = applyLimits(speedToGo, currentSpeed, Calibration.AUTON_ACCEL, Calibration.AUTON_SLIDE_SPEED, dt);
 
             // Turn speed and heading into forward/rotate:
-            localization.convertSpeedDirection(speedToGo, headingToGo);
+            localization.convertSpeedDirection(currentSpeed, headingToGo);
 
             // Keep rotation on target:
             double rotateP = localization.diffFromHeadingDeg(headingDeg) * Calibration.AUTON_ANGLE_GAIN_P;
