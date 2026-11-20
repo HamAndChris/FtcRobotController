@@ -67,6 +67,9 @@ public class AprilSensing {
                 // Set the camera location so we can use robotPose:
                 .setCameraPose(cameraPosition, cameraOrientation)
 
+                // Apply the custom field locations and orientations we determined with LINEAR ALGEBRA:
+                .setTagLibrary(CustomAprilTagGameDatabase.getCurrentGameTagLibrary())
+
                 .build();
 
         VisionPortal.Builder builder = new VisionPortal.Builder()

@@ -4,6 +4,9 @@ package org.firstinspires.ftc.teamcode;
 /**
  * Central place for all calibration constants.
  * These values can be used across multiple OpModes and classes.
+ *
+ * Note: If you change these and it fails to compile, it's because the ranges are being checked by a unit test
+ *       which is located at TeamCode/src/test/java/org/firstinspires/ftc/teamcode/CalibrationTest.java
  */
 public final class Calibration {
     // Prevent instantiation
@@ -20,15 +23,7 @@ public final class Calibration {
     // Autonomous behavior calibrations:
 
     /** Seconds: Stop all movement after this amount of time to avoid penalties */
-    public static final double AUTON_TIME_LIMIT = 30;
-    /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
-    public static final double AUTON_STRAFE_SPEED = 0.3;
-    /** MotorSpeed: Default translation speed for autoSlideTo() operations */
-    public static final double AUTON_SLIDE_SPEED = 0.75;
-    /** Deg/sec: Default rotational speed for operations */
-    public static final double AUTON_ROTATE_SPEED = 90;
-    /** MotorSpeed: Translated from angle speed */
-    public static final double AUTON_ROTATE_MOTOR_SPEED = Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED));
+    public static final double AUTON_TIME_LIMIT   = 30;
     /** Inches: How far to come off wall before beginning to look for APRIL tags */
     public static final double AUTON_DIST_STEP1   = 9;
     /** Inches: Distance to wall in parking zone at end of autonomy */
@@ -37,11 +32,19 @@ public final class Calibration {
     public static final double AUTON_STRAFE_DIST  = 16;
     /** Inches: Distance from center of robot to wall to approach flowers */
     public static final double AUTON_DIST_FLOWER_APPROACH = 18;
-    /** Inches: Travel distance to drain flowers */
+    /** Inches: Travel distance to drain flowers (subtract from FLOWER_APPROACH to get distance from wall) */
     public static final double AUTON_DIST_FLOWER_DRAIN = 6;
 
     // Autonomous motion profiling calibrations:
 
+    /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
+    public static final double AUTON_STRAFE_SPEED = 0.3;
+    /** MotorSpeed: Default translation speed for autoSlideTo() operations */
+    public static final double AUTON_SLIDE_SPEED = 0.5;
+    /** Deg/sec: Default rotational speed for operations */
+    public static final double AUTON_ROTATE_SPEED = 90;
+    /** MotorSpeed: Translated from angle speed */
+    public static final double AUTON_ROTATE_MOTOR_SPEED = Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED));
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
     public static final double AUTON_ACCEL          = 1.0;
     /** Inches: Distance for translational movements to be considered "at target" */

@@ -44,9 +44,12 @@ import java.util.ArrayList;
 public class CustomAprilTagGameDatabase
 {
     // Measurements pulled from official OnShape field CAD
-    public static final double TAG_HEIGHT = 49.654; // Height of tag cluster center from floor
-    public static final double CLUSTER_Y = 72 - 25.5/2; // Y distance from cluster center to driver wall
-    public static final double CLUSTER_X = 72 + 12.876; // X distance from cluster center to left wall
+    public static final double FIELD_CENTER_Y   = 72;
+    public static final double FIELD_CENTER_X   = 72;
+    public static final double TAG_HEIGHT       = 49.654; // Height of tag cluster center from floor
+    public static final double CLUSTER_Y_OFFSET = 25.5/2; // Y distance from cluster center to driver wall
+    public static final double CLUSTER_X_OFFSET = 12.876; // X distance from cluster center to field center
+    public static final double TAG_INCLINE      = 30;     // Degrees above horizontal
 
     /**
      * Get the {@link AprilTagLibrary} for the current season game, plus sample tags
@@ -60,44 +63,95 @@ public class CustomAprilTagGameDatabase
                 .build();
     }
 
+    // Helper functions to generate the quaternions we need. Based on understanding from this wonderful article:
+    // https://medium.com/@dmdinithipurna/understanding-quaternions-67cf263c276f
+
+    /** Generate a quaternion that applies rotation in the X axis by the specified degrees. */
+    public static Quaternion xRotationQuat(double degrees){
+        float w = (float) Math.cos(Math.toRadians(degrees/2));
+        float x = (float) Math.sin(Math.toRadians(degrees/2));
+        float y = 0;
+        float z = 0;
+        return new Quaternion(w, x, y, z, 0);
+    }
+    /** Generate a quaternion that applies rotation in the X axis by the specified degrees. */
+    public static Quaternion yRotationQuat(double degrees){
+        float w = (float) Math.cos(Math.toRadians(degrees/2));
+        float x = 0;
+        float y = (float) Math.sin(Math.toRadians(degrees/2));
+        float z = 0;
+        return new Quaternion(w, x, y, z, 0);
+    }
+    /** Generate a quaternion that applies rotation in the X axis by the specified degrees. */
+    public static Quaternion zRotationQuat(double degrees){
+        float w = (float) Math.cos(Math.toRadians(degrees/2));
+        float x = 0;
+        float y = 0;
+        float z = (float) Math.sin(Math.toRadians(degrees/2));
+        return new Quaternion(w, x, y, z, 0);
+    }
 
     /**
-     * Get the {@link AprilTagLibrary} for the BioBuzz FTC game
+     * Get the {@link AprilTagLibrary} for the BioBuzz FTC game, modified to include field position as we (team 8487)
+     * intend to use them. That is, we will only localize off hives that are OUR OWN ALLIANCE, and TIPPED UP.
+     * Also, our field orientation treats the left wall of our alliance's side as the origin.
+     * Therefore, every tag will be oriented 30 degrees up from horizontal, and red audience / blue scoring will be identical.
+     * Author: Chris Hammond, #8487 RoboToasters mentor, 2026
+     *
      * @return the {@link AprilTagLibrary} for the BioBuzz FTC game
      */
     public static AprilTagLibrary getBioBuzzTagLibrary()
     {
+        // Starting orientation of the April tags is face down, with the top edge facing an observer to the South (negative Y).
+        // When multiplying quaternions, the left-hand operand is applied in the *global reference frame*.
+        // Thus, to get the hive tag orientation, we must first rotate the tag in Z so the top edge faces the desired wall,
+        // then tip that side up by 30 degrees.
+        Quaternion rightOrientation = yRotationQuat(-TAG_INCLINE).multiply( zRotationQuat( 90), 0 );
+        Quaternion leftOrientation  = yRotationQuat( TAG_INCLINE).multiply( zRotationQuat(-90), 0 );
+
+        // XYZ coordinates are based on alliance side, with origin at left end of driver's wall.
+        float rightSideX = (float) (FIELD_CENTER_X + CLUSTER_X_OFFSET);
+        float leftSideX  = (float) (FIELD_CENTER_X - CLUSTER_X_OFFSET);
+        float y = (float) (FIELD_CENTER_Y - CLUSTER_Y_OFFSET);
+        float z = (float) TAG_HEIGHT;
+        VectorF leftLocation  = new VectorF(leftSideX,  y, z);
+        VectorF rightLocation = new VectorF(rightSideX, y, z);
+
+        // Red: scoring is on left
         AprilTagClusterMetadata redScoring = new AprilTagClusterMetadata(
                 getBioBuzzCluster(30),
                 "RED SCORING",
                 "RED SCORING",
-                new VectorF(0,0,0),
+                leftLocation,
                 DistanceUnit.INCH,
-                Quaternion.identityQuaternion());
+                leftOrientation);
 
+        // Red: audience is on right
         AprilTagClusterMetadata redAudience = new AprilTagClusterMetadata(
                 getBioBuzzCluster(34),
                 "RED AUDIENCE",
                 "RED AUDIENCE",
-                new VectorF(0,0,0),
+                rightLocation,
                 DistanceUnit.INCH,
-                Quaternion.identityQuaternion());
+                rightOrientation);
 
+        // Blue: audience is on left
         AprilTagClusterMetadata blueAudience = new AprilTagClusterMetadata(
                 getBioBuzzCluster(38),
                 "BLUE AUDIENCE",
                 "BLUE AUDIENCE",
-                new VectorF(0,0,0),
+                leftLocation,
                 DistanceUnit.INCH,
-                Quaternion.identityQuaternion());
+                leftOrientation);
 
+        // Blue: scoring is on the left
         AprilTagClusterMetadata blueScoring = new AprilTagClusterMetadata(
                 getBioBuzzCluster(42),
                 "BLUE SCORING",
                 "BLUE SCORING",
-                new VectorF(0,0,0),
+                rightLocation,
                 DistanceUnit.INCH,
-                Quaternion.identityQuaternion());
+                rightOrientation);
 
         return new AprilTagLibrary.Builder()
                 .addCluster(redScoring)
