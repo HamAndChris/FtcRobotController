@@ -270,8 +270,8 @@ public class Teleop_BothTeams extends OpMode {
         /* *************** Yaw orientation reset logic ************* */
 
         if( gamepad1.right_stick_button ){
-            // If right stick button is pressed, reset the "field relative" orientation.
-            localization.resetYaw();
+            // Right stick button is pressed. Treat the robot facing away from driver as "forward" so it must be rotated 90 degrees
+            localization.setHeadingDeg(90);
         }
 
         /* *************** Chassis Movement Controls *************** */

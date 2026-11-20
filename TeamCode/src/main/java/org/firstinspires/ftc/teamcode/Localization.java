@@ -78,11 +78,11 @@ public class Localization {
     }
 
     /** Take a desired field-relative X/Y command and convert to actual robot drive commands. */
-    public void convertFieldRelative(double fwd_x, double right_y, double rotate)
+    public void convertFieldRelative(double fwd_y, double right_x, double rotate)
     {
         // First, convert direction being asked to drive to polar coordinates
-        double theta = Math.atan2(fwd_x, right_y);
-        double r = Math.hypot(right_y, fwd_x);
+        double theta = Math.atan2(fwd_y, right_x);
+        double r = Math.hypot(right_x, fwd_y);
 
         convertSpeedDirection(r, theta);
         newRotate = rotate;
@@ -176,6 +176,10 @@ public class Localization {
     }
     // ----------------------- Setting the pose -----------------------
 
+    public void setPose(double xInches, double yInches, double headingDeg) {
+        setPose(new Pose2D(DistanceUnit.INCH, xInches, yInches, AngleUnit.DEGREES, headingDeg));
+    }
+
     /** Set the robot's pose (start of auto, wall-alignment reset, AprilTag correction, etc.). */
     public void setPose(Pose2D p) {
         lastFl = frontLeft.getCurrentPosition();
@@ -188,14 +192,16 @@ public class Localization {
 
         x = p.getX(DistanceUnit.INCH);
         y = p.getY(DistanceUnit.INCH);
-        heading = wrapAngle(p.getHeading(AngleUnit.RADIANS));
-        lastHeading = heading;
+        setHeadingDeg( p.getHeading(AngleUnit.DEGREES) );
         lastTimeNs = System.nanoTime();
         robotVxInPerSec = robotVyInPerSec = omegaRadPerSec = 0;
     }
 
-    public void setPose(double xInches, double yInches, double headingDeg) {
-        setPose(new Pose2D(DistanceUnit.INCH, xInches, yInches, AngleUnit.DEGREES, headingDeg));
+    /** Set the robot heading in radians, preserving X/Y position. */
+    public void setHeadingDeg(double headingDeg) {
+        heading = wrapAngle(Math.toRadians(headingDeg));
+        headingOffset = wrapAngle(heading - rawYaw);
+        lastHeading = heading;
     }
 
     /** Zero the heading to the current direction, keeping X/Y ("reset field-centric" button). */
