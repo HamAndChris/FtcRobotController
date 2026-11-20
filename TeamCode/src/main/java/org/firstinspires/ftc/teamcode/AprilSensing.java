@@ -105,7 +105,8 @@ public class AprilSensing {
                 telemetry.addData("Robot","XYZ %6.1f %6.1f %6.1f RPY %6.1f %6.1f %6.1f",
                         pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw());
                 // Debugging: also print hive field position
-                telemetry.addData("Hive","XYZ %s", clusterDet.metadata.fieldPosition);
+                telemetry.addData("Hive Pos","XYZ %s", clusterDet.metadata.fieldPosition);
+                telemetry.addData("Hive Quat","%s", clusterDet.metadata.fieldOrientation);
 
                 // Find the hive that's the correct color, and tipped upwards (not upside down)
                 if( name.contains(TeamColor) && hiveIsTippedUp(clusterDet) ){

@@ -74,7 +74,7 @@ public final class Calibration {
     public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
 
     // Laser distance sensor calibrations:
-    public static final double LASER_DISTANCE_WIDTH_MM = 15.375 * 25.4;
+    public static final double LASER_DISTANCE_WIDTH_MM = 12.375 * 25.4;
     public static final double LASER_ANGLE_GAIN_P   = 1./800; // Laser angle alignment proportional gain
     public static final double LASER_ANGLE_MAXPOWER = 0.5;
     public static final double LASER_TARGET_DIST_MM = 22 * 25.4; // Target distance from center of robot to wall during strafing
