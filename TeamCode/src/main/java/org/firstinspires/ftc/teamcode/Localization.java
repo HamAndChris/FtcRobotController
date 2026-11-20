@@ -261,7 +261,7 @@ public class Localization {
 
     /** Calculate X/Y distance from current location to another point. Ignores heading. */
     public double distanceTo( Pose2D targetPose ){
-        return distanceTo( targetPose.getX(DistanceUnit.INCH), targetPose.getX(DistanceUnit.INCH) );
+        return distanceTo( targetPose.getX(DistanceUnit.INCH), targetPose.getY(DistanceUnit.INCH) );
     }
 
     /** Calculate X/Y distance from current location to another point. Ignores heading. */
@@ -273,7 +273,7 @@ public class Localization {
 
     /** Calculate heading from current location to another point (ignoring robot heading). Returns CCW radians. */
     public double directionTo( Pose2D targetPose ){
-        return directionTo( targetPose.getX(DistanceUnit.INCH), targetPose.getX(DistanceUnit.INCH) );
+        return directionTo( targetPose.getX(DistanceUnit.INCH), targetPose.getY(DistanceUnit.INCH) );
     }
 
     /** Calculate heading from current location to another point (ignoring robot heading). Returns CCW radians. */
@@ -283,7 +283,7 @@ public class Localization {
         return Math.atan2(yDiff, xDiff);
     }
 
-    /** Get the rotation command for a desired angular rate in CCW radians/s (TODO: calibrate this) */
+    /** Get the rotation command for a desired angular rate in CCW radians/s */
     public static double getRotateCommand(double radiansPerSec){
         double trackWidth_inch = 16;
         double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
