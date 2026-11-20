@@ -71,9 +71,7 @@ public class Auton_LowSide_2 extends Auton_Basic {
         // If we have time, try to drain the flower and shoot again
         if( runtime.seconds() < 15 ) {
             // step 3 turn around and approach flower
-            flowerBarDown();
-            autoRotateTo(180);
-            autoSlideTo(24, 48);
+            autoSlideToLeftFlower();
 
             // step 4: Turn on intake and drain flower
             autoDrainFlower();
@@ -85,7 +83,7 @@ public class Auton_LowSide_2 extends Auton_Basic {
             autoAlignAndFire(25);
         }
 
-        // Slide over to parking zone and rotate 90 so back faces driver wall:
+        // Slide over towards parking zone and rotate 90 so back faces driver wall:
         autoSlideTo(21, 24, 90);
 
         // Step 6: backup to wall and hold wall distances in case we get bumped

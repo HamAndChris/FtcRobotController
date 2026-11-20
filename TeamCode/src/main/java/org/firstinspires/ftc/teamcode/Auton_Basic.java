@@ -421,6 +421,16 @@ public class Auton_Basic extends LinearOpMode {
     void flowerBarUp(){
         setPositionCached(flowerBar, Calibration.FLOWER_BAR_UP);
     }
+    /** Helper function to tell whether the flower bar is already down */
+    boolean isFlowerBarDown(){
+        // Get previous power value:
+        Double prevPos = cachedMotorPowers.get(flowerBar);
+        if( prevPos == null ){
+            return false;
+        }
+        // Return true if the flower bar has previously been commanded down
+        return Math.abs(prevPos - Calibration.FLOWER_BAR_DOWN) < 0.05;
+    }
 
     /** Helper function to set intake motors on */
     void intakeOn(){
@@ -626,6 +636,32 @@ public class Auton_Basic extends LinearOpMode {
         autoSlideTo(xInches, yInches, originalHeading);
     }
 
+    /** Auto loop to smoothly slide over to the left wall flower's approach position.
+     *  Moves in a straight line, ideally you are already nearby before calling.
+     *  Also lowers flower bar as it's sliding. */
+    void autoSlideToLeftFlower() {
+        // First decide if we need to rotate before sliding:
+        double targetHeading = 180;
+        if( localization.diffFromHeadingDeg(targetHeading) > 10 ){
+            autoRotateTo(targetHeading);
+        }
+        flowerBarDown();
+        autoSlideTo(Calibration.AUTON_DIST_FLOWER_APPROACH, 48, targetHeading);
+    }
+
+    /** Auto loop to smoothly slide over to the driver wall flower's approach position.
+     *  Moves in a straight line, ideally you are already nearby before calling.
+     *  Also lowers flower bar as it's sliding. */
+    void autoSlideToRightFlower() {
+        // First decide if we need to rotate before sliding:
+        double targetHeading = -90;
+        if( localization.diffFromHeadingDeg(targetHeading) > 10 ){
+            autoRotateTo(targetHeading);
+        }
+        flowerBarDown();
+        autoSlideTo(8*24, Calibration.AUTON_DIST_FLOWER_APPROACH, targetHeading);
+    }
+
     /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
      - Assumes zero speed at beginning and end of operation.
      - Locks heading to given value during operation.
@@ -679,7 +715,12 @@ public class Auton_Basic extends LinearOpMode {
         double drainX = startX + Math.cos(Math.toRadians(heading)) * Calibration.AUTON_DIST_FLOWER_DRAIN;
         double drainY = startY + Math.sin(Math.toRadians(heading)) * Calibration.AUTON_DIST_FLOWER_DRAIN;
 
-        // Turn on intake. Flower bar should already be down, and we don't want to wait for it here.
+        // Flower bar should already be down, but if not, wait for it now:
+        if( !isFlowerBarDown() ) {
+            flowerBarDown();
+            autoPause(1);
+        }
+        // Turn on intake.
         intakeOn();
 
         // jam into flower, wait 2 seconds

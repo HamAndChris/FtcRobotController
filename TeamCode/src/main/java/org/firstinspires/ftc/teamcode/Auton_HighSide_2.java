@@ -45,7 +45,7 @@ public class Auton_HighSide_2 extends Auton_Basic {
 
     @Override
     public String modeDescription(){
-        return "Fire catapult, drain flower, and return to parking zone";
+        return "Fire catapult, drain flower, try to shoot again, and return to parking zone";
     }
 
     @Override
@@ -67,19 +67,16 @@ public class Auton_HighSide_2 extends Auton_Basic {
         // step 2 line up to April Tag and fire
         autoAlignAndFire(15);
 
-        // rotate to face rear wall
+        // rotate to face rear wall, then slide over to flower
         autoRotateTo(-90);
-
-        // Slide over to flower
-        flowerBarDown();
-        autoSlideTo(8*24, Calibration.AUTON_DIST_FLOWER_APPROACH, -90);
+        autoSlideToRightFlower();
 
         // Drain flower
         autoDrainFlower();
 
         // Slide back over to hive so we can check if it's still tipped up
         autoSlideTo(120, 48);
-        autoRotateTo(160);
+        autoRotateTo(180);
 
         // Check if the hive is still tipped up. If so, shoot again
         if( checkIfHiveIsTippedUp() ){
