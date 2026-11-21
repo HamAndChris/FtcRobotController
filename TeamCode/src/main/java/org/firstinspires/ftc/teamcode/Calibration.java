@@ -20,8 +20,13 @@ public final class Calibration {
     // Hardware changes:
     public static final boolean DISABLE_I2C_DISTANCE_SENSORS = true;
 
-    // Autonomous behavior calibrations:
+    // APRIL tag aim-bot calibrations:
+    public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
+    public static final double APRIL_DIST_GAIN_P = 0.1;
+    public static final double APRIL_TARGET_BEARING = 0.0;  // Adjust this to make robot aim to the left/right (higher = more left)
+    public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
 
+    // Autonomous behavior calibrations:
     /** Seconds: Stop all movement after this amount of time to avoid penalties */
     public static final double AUTON_TIME_LIMIT   = 30;
     /** Inches: How far to come off wall before beginning to look for APRIL tags */
@@ -31,14 +36,14 @@ public final class Calibration {
     /** Inches: Distance from center of robot to wall when strafing */
     public static final double AUTON_STRAFE_DIST  = 16;
     /** Inches: Distance from center of robot to wall to approach flowers */
-    public static final double AUTON_DIST_FLOWER_APPROACH = 18;
+    public static final double AUTON_DIST_FLOWER_APPROACH = 20;
     /** Inches: Travel distance to drain flowers (subtract from FLOWER_APPROACH to get distance from wall) */
-    public static final double AUTON_DIST_FLOWER_DRAIN = 6;
+    public static final double AUTON_DIST_FLOWER_DRAIN = 8;
 
     // Autonomous motion profiling calibrations:
 
     /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
-    public static final double AUTON_STRAFE_SPEED = 0.3;
+    public static final double AUTON_STRAFE_SPEED = 0.5;
     /** MotorSpeed: Default translation speed for autoSlideTo() operations */
     public static final double AUTON_SLIDE_SPEED = 0.5;
     /** Deg/sec: Default rotational speed for operations */
@@ -46,17 +51,17 @@ public final class Calibration {
     /** MotorSpeed: Translated from angle speed */
     public static final double AUTON_ROTATE_MOTOR_SPEED = Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED));
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
-    public static final double AUTON_ACCEL          = 1.0;
+    public static final double AUTON_ACCEL          = 0.8;
     /** Inches: Distance for translational movements to be considered "at target" */
-    public static final double AUTON_DIST_THRESHOLD = 1.0;
+    public static final double AUTON_DIST_THRESHOLD = 2.0;
     /** Deg: IMU angle alignment "done" angle threshold */
-    public static final double AUTON_ANGLE_THRESH   = 2.0;
+    public static final double AUTON_ANGLE_THRESH   = 4.0;
     /** Deg/sec/sec: How quickly to ramp up/down rotational movements */
     public static final double AUTON_ANGLE_ACCEL    = 180;
     /** Sec: IMU angle alignment "done" time threshold */
     public static final double AUTON_ANGLE_SETTLING = 0.25;
     /** MotorSpeed/Deg: IMU angle alignment proportional gain */
-    public static final double AUTON_ANGLE_GAIN_P = 0.3/90;
+    public static final double AUTON_ANGLE_GAIN_P = 0.3/45;
     /** Speed/inch: Position holding proportional gain */
     public static final double AUTON_POSITION_GAIN_P = 0.05;
 
@@ -69,12 +74,8 @@ public final class Calibration {
     public static final double WINCH_HOLDING_GAIN_P = 0.001;
     /** Seconds: How long after launch commanded to prevent any motion */
     public static final double WINCH_FIRING_LOCKOUT = 0.5;
-
-    // APRIL tag aim-bot calibrations:
-    public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
-    public static final double APRIL_DIST_GAIN_P = 0.1;
-    public static final double APRIL_TARGET_BEARING = 4.0;  // Adjust this to make robot aim to the left/right
-    public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
+    /** MotorPower: How much reverse power to apply when operator presses B */
+    public static final double WINCH_UNWIND_POWER = 1.0;
 
     // Laser distance sensor calibrations:
     public static final double LASER_DISTANCE_WIDTH_MM = 12.375 * 25.4;
@@ -101,8 +102,8 @@ public final class Calibration {
     public static final double LED_READY_TO_FIRE = LED_GREEN;
 
     // Flower Bar positions:
-    public static final double FLOWER_BAR_UP = 0.18;
-    public static final double FLOWER_BAR_DOWN = 0.65;
+    public static final double FLOWER_BAR_UP = 0.36;
+    public static final double FLOWER_BAR_DOWN = 0.81;
 
 
     // Calculate the COUNTS_PER_INCH for your specific drive train.

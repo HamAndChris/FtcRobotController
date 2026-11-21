@@ -73,6 +73,7 @@ public class Localization {
 
         imu.initialize(new IMU.Parameters(orientationOnRobot));
         imu.resetYaw();
+        rawYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);  // CCW positive
 
         setPose(startingPose);
     }
@@ -188,7 +189,7 @@ public class Localization {
         lastBr = backRight.getCurrentPosition();
 
         // Uses the yaw cached by the most recent update(); no IMU read here.
-        headingOffset = wrapAngle(p.getHeading(AngleUnit.RADIANS) - rawYaw);
+        //headingOffset = wrapAngle(p.getHeading(AngleUnit.RADIANS) - rawYaw);
 
         x = p.getX(DistanceUnit.INCH);
         y = p.getY(DistanceUnit.INCH);
@@ -235,7 +236,7 @@ public class Localization {
 
     /** Get heading in degrees, snapped to nearest cardinal direction (multiple of 90) */
     public double getHeadingSnappedTo(double increment){
-        return Math.round( getHeadingDeg() / increment ) * increment;
+        return Math.round( Math.abs(getHeadingDeg()) / increment ) * increment * Math.signum(heading);
     }
 
     /** Field-relative X velocity (in/s). */
@@ -262,7 +263,7 @@ public class Localization {
     }
     /** Calculate difference in heading from desired. Returns CCW degrees. */
     public double diffFromHeadingDeg(double desiredHeadingDeg){
-        return Math.toDegrees( wrapAngle(heading - Math.toRadians(desiredHeadingDeg)) );
+        return Math.toDegrees( wrapAngle(Math.toRadians(desiredHeadingDeg) - heading) );
     }
 
     /** Calculate X/Y distance from current location to another point. Ignores heading. */
@@ -294,7 +295,16 @@ public class Localization {
         double trackWidth_inch = 16;
         double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
         double desiredMotorSpeed = -desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
-        return -Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
+        return Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
+    }
+
+    /** Get the forward command for a desired forward speed in inches per second */
+    public static double getForwardCommand(double inchesPerSec){
+        return inchesPerSec / Calibration.MAX_SPEED_INCHES_PER_S / FORWARD_MULTIPLIER;
+    }
+    /** Get the forward command for a desired forward speed in inches per second */
+    public static double getRightCommand(double inchesPerSec){
+        return inchesPerSec / Calibration.MAX_SPEED_INCHES_PER_S / STRAFE_MULTIPLIER;
     }
 
 

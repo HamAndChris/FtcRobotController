@@ -49,7 +49,7 @@ public class CustomAprilTagGameDatabase
     public static final double TAG_HEIGHT       = 49.654; // Height of tag cluster center from floor
     public static final double CLUSTER_Y_OFFSET = 25.5/2; // Y distance from cluster center to driver wall
     public static final double CLUSTER_X_OFFSET = 12.876; // X distance from cluster center to field center
-    public static final double TAG_INCLINE      = 30;     // Degrees above horizontal
+    public static final double TAG_INCLINE      = 28.5;     // Degrees above horizontal
 
     /**
      * Get the {@link AprilTagLibrary} for the current season game, plus sample tags

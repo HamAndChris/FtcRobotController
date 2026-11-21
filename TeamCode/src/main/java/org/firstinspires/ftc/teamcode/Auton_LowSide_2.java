@@ -63,7 +63,7 @@ public class Auton_LowSide_2 extends Auton_Basic {
         localization.setPose(STARTING_X, STARTING_Y, STARTING_HEADING);
 
         // Step 1 move forward a few inches
-        autoSlideTo(STARTING_X + Calibration.AUTON_DIST_STEP1, STARTING_Y);
+        autoSlideTo(STARTING_X + Calibration.AUTON_DIST_STEP1, STARTING_Y, STARTING_HEADING);
 
         // step 2 line up to April Tag while winding winch, wait up to 23 seconds for it to tip our way
         autoAlignAndFire(25);
@@ -77,10 +77,11 @@ public class Auton_LowSide_2 extends Auton_Basic {
             autoDrainFlower();
 
             // step 5: Turn back around towards hive
-            autoSlideTo(24, 48, 0);
+            autoSlideTo(Poses.LEFT_FIRING);
+            intakeOff();
 
             // step 6: try to fire again
-            autoAlignAndFire(25);
+            autoAlignAndFire(27);
         }
 
         // Slide over towards parking zone and rotate 90 so back faces driver wall:

@@ -57,6 +57,7 @@ public class Utility_TestOdometry extends Auton_Basic {
     {
         localization.setPose(0,0,0);
         double targetX = 0, targetY = 0, targetHeading = 0;
+        double flowerBarPos = Calibration.FLOWER_BAR_UP;
 
         // Wait for user to press the D-pad direction they wish to go:
         while( opModeIsActive() ){
@@ -72,11 +73,11 @@ public class Utility_TestOdometry extends Auton_Basic {
                 autoSlideTo(targetX, targetY, targetHeading);
             }
             else if( gamepad1.dpad_right ){
-                targetY += DISTANCE;
+                targetY -= DISTANCE;
                 autoSlideTo(targetX, targetY, targetHeading);
             }
             else if( gamepad1.dpad_left ){
-                targetY -= DISTANCE;
+                targetY += DISTANCE;
                 autoSlideTo(targetX, targetY, targetHeading);
             }
             else if( gamepad1.left_bumper ){
@@ -87,6 +88,18 @@ public class Utility_TestOdometry extends Auton_Basic {
                 targetHeading -= ANGLE;
                 autoRotateTo(targetHeading);
             }
+
+            // Flower bar:
+            if( gamepad1.y ){
+                flowerBarPos -= 0.005;
+                setPositionCached(flowerBar, flowerBarPos);
+            }
+            if( gamepad1.b ){
+                flowerBarPos += 0.005;
+                setPositionCached(flowerBar, flowerBarPos);
+            }
+            telemetry.addData("Flower Bar (press B/Y)", "%.2f %%", flowerBarPos);
+            telemetry.addData("Target Heading", "%.1f deg", targetHeading);
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED

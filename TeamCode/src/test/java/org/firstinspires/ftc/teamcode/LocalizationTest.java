@@ -23,8 +23,22 @@ public class LocalizationTest {
         localization = mock(Localization.class, CALLS_REAL_METHODS);
     }
 
+    @Test public void testSnapTo() {
+        assertEquals(0, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 0 to 90");
+        localization.setHeadingDeg(46);
+        assertEquals(90, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 46 to 90");
+        localization.setHeadingDeg(-44);
+        assertEquals(0, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 46 to 90");
+        localization.setHeadingDeg(-46);
+        assertEquals(-90, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 46 to 90");
+        localization.setHeadingDeg(179);
+        assertEquals(180, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 179 to 90");
+        localization.setHeadingDeg(-179);
+        assertEquals(-180, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap -179 to 90");
+    }
+
     /** Test all possible combinations of heading and direction through this function so it never hurts us again */
-    @Test void testConvertSpeedDirection() throws Exception {
+    @Test public void testConvertSpeedDirection() throws Exception {
         // {headingDeg, directionDeg, speed, expectedForward, expectedRight}
         double[][] testCases = {
                 // Cardinal directions, heading = 0

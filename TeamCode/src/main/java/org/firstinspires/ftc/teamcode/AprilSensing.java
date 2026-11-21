@@ -174,7 +174,7 @@ public class AprilSensing {
 
     /** Determine whether the detected hive is in the "up" position */
     private boolean hiveIsTippedUp(AprilTagClusterDetection cluster){
-        return Math.abs(cluster.ftcPose.roll) < 90;  // Not reading hive from wrong side
-              //  && cluster.ftcPose.pitch > 20;      // Tipped sufficiently upward // TODO: Find the correct value for this!
+        return Math.abs(cluster.ftcPose.roll) < 90  // Not reading hive from wrong side
+                && cluster.ftcPose.pitch < 20;      // Tipped sufficiently upward // TODO: Find a better way to calculate this
     }
 }

@@ -333,7 +333,7 @@ public class Teleop_BothTeams extends OpMode {
         if( operatorGamepad.dpad_down ){
             flowerBarDown();
         }
-        //telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
+        telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
 
         // Send LED value:
         setPositionCached(ledIndicator, LEDColor);
@@ -405,7 +405,7 @@ public class Teleop_BothTeams extends OpMode {
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
            if (operatorGamepad.b ){
-               setPowerCached(winchMotor, -0.5);
+               setPowerCached(winchMotor, -Calibration.WINCH_UNWIND_POWER);
            }
            else {
                setPowerCached(winchMotor, 0);

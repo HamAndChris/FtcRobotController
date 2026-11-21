@@ -37,6 +37,10 @@ import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.HardwareDevice;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayDeque;
@@ -233,6 +237,8 @@ public class Auton_Basic extends LinearOpMode {
 
         // After all steps complete, make sure to stop and turn off the LED:
         drive(0, 0, 0);
+        intakeOff();
+        flowerBarUp();
         setLED(Calibration.LED_OFF);
 
         telemetry.addData("Autonomy", "Complete");
@@ -349,6 +355,8 @@ public class Auton_Basic extends LinearOpMode {
     /** Auto loop to strafe along the driver wall until the left distance sensor detects we're the correct distance from the left wall */
     void autoStrafeAlongWallToDistance(double leftWallDist_inches){
         String label = String.format("autoStrafe to %.1f inches", leftWallDist_inches);
+        double strafeSpeed_inchPerSec = Calibration.AUTON_STRAFE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
+        double accel_InchPerSec2      = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
 
         // Since we're not using the I2C distance sensors anymore, we just need to hope the localization is up to date:
         double distance, currentSpeed = 0;
@@ -369,11 +377,11 @@ public class Auton_Basic extends LinearOpMode {
             lastTime = now;
 
             // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
-            double speedToGo = Math.sqrt( 2 * Calibration.AUTON_ACCEL * Math.abs(distanceToGo) ) * Math.signum(distanceToGo);
+            double speedToGo = Math.sqrt( 2 * accel_InchPerSec2 * Math.abs(distanceToGo) ) * Math.signum(distanceToGo);
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentSpeed = applyLimits(speedToGo, currentSpeed, Calibration.AUTON_STRAFE_SPEED, Calibration.AUTON_STRAFE_SPEED, dt);
-            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, speedToGo);
+            currentSpeed = applyLimits(speedToGo, currentSpeed, accel_InchPerSec2, strafeSpeed_inchPerSec, dt);
+            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, Localization.getRightCommand(currentSpeed));
 
         } while( opModeIsActive() && timesNotUp() && Math.abs(distance - leftWallDist_inches) > Calibration.AUTON_DIST_THRESHOLD );
     }
@@ -659,7 +667,15 @@ public class Auton_Basic extends LinearOpMode {
             autoRotateTo(targetHeading);
         }
         flowerBarDown();
-        autoSlideTo(8*24, Calibration.AUTON_DIST_FLOWER_APPROACH, targetHeading);
+        autoSlideTo(8*12, Calibration.AUTON_DIST_FLOWER_APPROACH, targetHeading);
+    }
+
+    /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
+     - Assumes zero speed at beginning and end of operation.
+     - Locks heading to given value during operation.
+     - Keeps trying forever until within 1 inch of target. */
+    void autoSlideTo(Pose2D pose){
+        autoSlideTo(pose.getX(DistanceUnit.INCH), pose.getY(DistanceUnit.INCH), pose.getHeading(AngleUnit.DEGREES));
     }
 
     /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
@@ -671,9 +687,14 @@ public class Auton_Basic extends LinearOpMode {
         double currentSpeed = 0;
         double lastTime = runtime.seconds();
         double distanceToGo = localization.distanceTo(xInches, yInches);
+        double degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+        double speed_inchPerSec   = Calibration.AUTON_SLIDE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
+        double accel_InchPerSec2  = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
         String label = String.format("autoSlideTo(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
 
-        while( opModeIsActive() && timesNotUp() && distanceToGo > Calibration.AUTON_DIST_THRESHOLD){
+        while( opModeIsActive() && timesNotUp()
+                && (distanceToGo > Calibration.AUTON_DIST_THRESHOLD
+                     || Math.abs(degreesToGo) > Calibration.AUTON_ANGLE_THRESH) ){
             beginLoop(label);
 
             // Calculate timestep:
@@ -686,29 +707,35 @@ public class Auton_Basic extends LinearOpMode {
             double headingToGo = localization.directionTo(xInches, yInches);
 
             // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
-            double speedToGo = Math.sqrt( 2 * Calibration.AUTON_ACCEL * distanceToGo );
+            double speedToGo_inchPerSec = Math.sqrt( 2 * accel_InchPerSec2 * distanceToGo );
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentSpeed = applyLimits(speedToGo, currentSpeed, Calibration.AUTON_ACCEL, Calibration.AUTON_SLIDE_SPEED, dt);
+            currentSpeed = applyLimits(speedToGo_inchPerSec, currentSpeed, accel_InchPerSec2, speed_inchPerSec, dt);
 
             // Turn speed and heading into forward/rotate:
             localization.convertSpeedDirection(currentSpeed, headingToGo);
+            double forward = Localization.getForwardCommand(localization.newForward);
+            double right = Localization.getRightCommand(localization.newRight);
 
             // Keep rotation on target:
-            double rotateP = localization.diffFromHeadingDeg(headingDeg) * Calibration.AUTON_ANGLE_GAIN_P;
+            degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+            double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
 
-            drive(localization.newForward, localization.newRight, rotateP);
+            drive(forward, right, rotateP);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
-                    localization.newForward, localization.newRight, rotateP);
+                    forward, right, rotateP);
         }
+        drive(0,0,0);
     }
 
     /** Auto sequence to drain a flower. Must be already lines up with robot center AUTON_DIST_FLOWER inches from the wall.
      *  Does not wait for flower bar to go down. Make sure you set it down before calling this!
-     *  It does raise the flower bar afterwards though. */
+     *  It does raise the flower bar afterwards though.
+     *  Now leave the intake ON when done. */
     void autoDrainFlower()
     {
-        double heading = localization.getHeadingSnappedTo(90);
+        //double heading = localization.getHeadingSnappedTo(90);
+        double heading = localization.getHeadingDeg();
         double startX = localization.getX();
         double startY = localization.getY();
 
@@ -725,17 +752,17 @@ public class Auton_Basic extends LinearOpMode {
 
         // jam into flower, wait 2 seconds
         autoSlideTo(drainX, drainY, heading);
-        autoPause(2);
 
         // Back up to starting position, then do it again:
         autoSlideTo(startX, startY, heading);
         autoSlideTo(drainX, drainY, heading);
-        autoPause(2);
+        autoSlideTo(startX, startY, heading);
+        autoSlideTo(drainX, drainY, heading);
 
         // back up to starting position, raise bar, and turn off intake
         autoSlideTo(startX, startY, heading);
         flowerBarUp();
-        intakeOff();
+        //intakeOff();
     }
 
     /** Auto loop to just wait for a set number of seconds */
@@ -760,9 +787,9 @@ public class Auton_Basic extends LinearOpMode {
         double lastTime = now;
         double lastMisalignedTime = now;
         double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
-        String label = String.format("autoRotateTo(%.1f, %.1f)", newHeadingDeg, Calibration.AUTON_ROTATE_SPEED);
+        String label = String.format("autoRotateTo(%.1f)", newHeadingDeg);
 
-        while( opModeIsActive() && timesNotUp() && now - lastMisalignedTime < Calibration.AUTON_ANGLE_SETTLING){
+        while( opModeIsActive() && timesNotUp() && Math.abs(degreesToGoCCW) > Calibration.AUTON_ANGLE_THRESH ){
             beginLoop(label);
 
             // Calculate timestep:
@@ -771,7 +798,7 @@ public class Auton_Basic extends LinearOpMode {
             lastTime = now;
 
             // Calculate new distance and heading to target:
-            degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+            degreesToGoCCW = localization.diffFromHeadingDeg(newHeadingDeg);
 
             // Determine whether we're in the settling window:
             if( Math.abs(degreesToGoCCW) > Calibration.AUTON_ANGLE_THRESH ){
@@ -779,10 +806,7 @@ public class Auton_Basic extends LinearOpMode {
             }
 
             // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
-            double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) );
-            if( Math.signum(degreesToGoCCW) < 0 ){
-                degPerSec = -degPerSec;
-            }
+            double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) ) * Math.signum(degreesToGoCCW) ;
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
             currentDegPerSec = applyLimits(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
@@ -793,12 +817,13 @@ public class Auton_Basic extends LinearOpMode {
             // Apply control loop to keep position constant:
             double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
             double pY = (originalY - localization.getY()) * Calibration.AUTON_POSITION_GAIN_P;
-            localization.convertFieldRelative(pX, pY, rotate);
+            localization.convertFieldRelative(pY, pX, rotate);
 
             drive(localization.newForward, localization.newRight, rotate);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
                     localization.newForward, localization.newRight, rotate);
         }
+        drive(0,0,0);
     }
 
     /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
