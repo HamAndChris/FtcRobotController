@@ -62,7 +62,7 @@ public class Auton_HighSide_2 extends Auton_Basic {
         localization.setPose(STARTING_X, STARTING_Y, STARTING_HEADING);
 
         // Step 1 move forward a few inches
-        autoSlideTo(STARTING_X - Calibration.AUTON_DIST_STEP1, STARTING_Y, STARTING_HEADING);
+        autoSlideToAbout(STARTING_X - Calibration.AUTON_DIST_STEP1, STARTING_Y, STARTING_HEADING);
 
         // step 2 line up to April Tag and fire
         autoAlignAndFire(15);
@@ -74,7 +74,7 @@ public class Auton_HighSide_2 extends Auton_Basic {
         autoDrainFlower();
 
         // Slide back over to hive so we can check if it's still tipped up
-        autoSlideTo(Poses.RIGHT_FIRING);
+        autoSlideToAbout(Poses.RIGHT_FIRING);
         intakeOff();
 
         // Check if the hive is still tipped up. If so, shoot again
@@ -83,8 +83,8 @@ public class Auton_HighSide_2 extends Auton_Basic {
             autoAlignAndFire(25);
         }
 
-        // Rotate 90 degrees to the right, so dual distance sensors face the left wall
-        autoSlideTo(8*12, Calibration.AUTON_STRAFE_DIST+9,90);
+        // Rotate 90 degrees to the right, so dual distance sensors face the driver wall
+        autoSlideToAbout(8*12, Calibration.AUTON_STRAFE_DIST+9,90);
 
         // Strafe along driver wall until we're 42 inches from the left wall
         autoStrafeAlongWallToDistance(42);

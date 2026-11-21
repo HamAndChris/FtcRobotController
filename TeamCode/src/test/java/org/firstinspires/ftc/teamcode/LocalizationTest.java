@@ -37,6 +37,12 @@ public class LocalizationTest {
         assertEquals(-180, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap -179 to 90");
     }
 
+    @Test public void testInDecelRadius(){
+        localization.overrideRobotVelocity(10, 10);
+        assertFalse( localization.inDecelRadius(10, 10, 9), "Outside decel radius");
+        assertTrue( localization.inDecelRadius(7, 7, 10), "Inside decel radius");
+    }
+
     /** Test all possible combinations of heading and direction through this function so it never hurts us again */
     @Test public void testConvertSpeedDirection() throws Exception {
         // {headingDeg, directionDeg, speed, expectedForward, expectedRight}

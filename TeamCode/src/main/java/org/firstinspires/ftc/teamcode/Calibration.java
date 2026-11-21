@@ -49,11 +49,13 @@ public final class Calibration {
     /** Deg/sec: Default rotational speed for operations */
     public static final double AUTON_ROTATE_SPEED = 90;
     /** MotorSpeed: Translated from angle speed */
-    public static final double AUTON_ROTATE_MOTOR_SPEED = Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED));
+    public static final double AUTON_ROTATE_MOTOR_SPEED = Math.abs(Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED)));
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
     public static final double AUTON_ACCEL          = 0.8;
     /** Inches: Distance for translational movements to be considered "at target" */
     public static final double AUTON_DIST_THRESHOLD = 2.0;
+    /** InchesPerSec: Speed for translational movements to be considered "stopped" */
+    public static final double AUTON_STOPPED_THRESHOLD = 1.0;
     /** Deg: IMU angle alignment "done" angle threshold */
     public static final double AUTON_ANGLE_THRESH   = 4.0;
     /** Deg/sec/sec: How quickly to ramp up/down rotational movements */

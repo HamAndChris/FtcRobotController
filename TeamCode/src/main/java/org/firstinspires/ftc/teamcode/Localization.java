@@ -78,6 +78,22 @@ public class Localization {
         setPose(startingPose);
     }
 
+    /** Enable testing of velocity calculations. NOT INTENDED FOR USE ON ROBOT */
+    public void overrideRobotVelocity(double velX, double velY){
+        robotVxInPerSec = velX;
+        robotVyInPerSec = velY;
+    }
+
+    /** Return true if we need to start decelerating from our current speed to land on the target */
+    public boolean inDecelRadius(double targetX, double targetY, double decelInchPerSec2){
+        double distance = distanceTo(targetX, targetY);
+        double currentSpeed = getRobotSpeed();
+
+        // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
+        double decelSpeed_inchPerSec = Math.sqrt( 2 * Math.abs(decelInchPerSec2) * distance );
+        return currentSpeed >= decelSpeed_inchPerSec;
+    }
+
     /** Take a desired field-relative X/Y command and convert to actual robot drive commands. */
     public void convertFieldRelative(double fwd_y, double right_x, double rotate)
     {

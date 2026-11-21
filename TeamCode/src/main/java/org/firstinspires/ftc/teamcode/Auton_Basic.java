@@ -382,7 +382,7 @@ public class Auton_Basic extends LinearOpMode {
             double speedToGo = Math.sqrt( 2 * accel_InchPerSec2 * Math.abs(distanceToGo) ) * Math.signum(distanceToGo);
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentSpeed = applyLimits(speedToGo, currentSpeed, accel_InchPerSec2, strafeSpeed_inchPerSec, dt);
+            currentSpeed = applyLimitsOneSided(speedToGo, currentSpeed, accel_InchPerSec2, strafeSpeed_inchPerSec, dt);
             strafeAlongWall(Calibration.AUTON_STRAFE_DIST, Localization.getRightCommand(currentSpeed));
 
         } while( opModeIsActive() && timesNotUp() && Math.abs(distance - leftWallDist_inches) > Calibration.AUTON_DIST_THRESHOLD );
@@ -554,8 +554,8 @@ public class Auton_Basic extends LinearOpMode {
         }
     }
 
-    // Apply a rate + magnitude limit:
-    double applyLimits(double desired, double last, double rateLimit, double maxMagnitude, double dt){
+    /** Apply a rate + magnitude limit. Rate limit is only applied when moving away from zero. */
+    double applyLimitsOneSided(double desired, double last, double rateLimit, double maxMagnitude, double dt){
         // Calculate max allowed increase based on rate limit and passage of time:
         double maxIncrease = dt * rateLimit;
         double result;
@@ -566,6 +566,17 @@ public class Auton_Basic extends LinearOpMode {
         } else {
             result = Math.min(Math.max(desired, last - maxIncrease), 0 + maxIncrease);
         }
+        return Math.max(Math.min(result, maxMagnitude), -maxMagnitude);
+    }
+
+    /** Apply a rate + magnitude limit. Rate limit applies in both directions. */
+    double applyLimitsSymmetrical(double desired, double last, double rateLimit, double maxMagnitude, double dt){
+        // Calculate max allowed increase based on rate limit and passage of time:
+        double maxIncrease = dt * rateLimit;
+        double result;
+
+        // Allow only that much increase or decrease
+        result = Math.max(Math.min(desired, last + maxIncrease), last - maxIncrease);
         return Math.max(Math.min(result, maxMagnitude), -maxMagnitude);
     }
     
@@ -681,6 +692,62 @@ public class Auton_Basic extends LinearOpMode {
         autoSlideTo(pose.getX(DistanceUnit.INCH), pose.getY(DistanceUnit.INCH), pose.getHeading(AngleUnit.DEGREES));
     }
 
+    void autoSlideToAbout(Pose2D pose){
+        autoSlideToAbout(pose.getX(DistanceUnit.INCH), pose.getY(DistanceUnit.INCH), pose.getHeading(AngleUnit.DEGREES));
+    }
+
+    /** Slide smoothly in a straight line to the target position using odometry.
+     *  Rather than a distance threshold, this method just decelerates to a stop as soon as it's
+     *  within the deceleration radius of the target.
+     */
+    void autoSlideToAbout(double xInches, double yInches, double headingDeg)
+    {
+        double currentSpeed = localization.getRobotSpeed();
+        double lastTime = runtime.seconds();
+        double distanceToGo = localization.distanceTo(xInches, yInches);
+        double degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+        double speed_inchPerSec   = Calibration.AUTON_SLIDE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
+        double accel_InchPerSec2  = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
+        boolean decelerating = localization.inDecelRadius(xInches, yInches, accel_InchPerSec2);
+        String label = String.format("autoSlideToAbout(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
+
+        while( opModeIsActive() && timesNotUp()
+                && (!decelerating
+                    || localization.getRobotSpeed() > Calibration.AUTON_STOPPED_THRESHOLD
+                    || Math.abs(degreesToGo) > Calibration.AUTON_ANGLE_THRESH*2) ){
+            beginLoop(label);
+
+            // Calculate timestep:
+            double now = runtime.seconds();
+            double dt = now - lastTime;
+            lastTime = now;
+
+            // Check whether we're in the deceleration radius (or ever were):
+            decelerating = decelerating || localization.inDecelRadius(xInches, yInches, accel_InchPerSec2);
+
+            // Choose desired speed based on that:
+            double speedToGo_inchPerSec = decelerating ? 0.0 : speed_inchPerSec;
+
+            // Use rate limiter to apply smooth accel/decel and cap to desired travel speed
+            currentSpeed = applyLimitsSymmetrical(speedToGo_inchPerSec, currentSpeed, accel_InchPerSec2, speed_inchPerSec, dt);
+
+            // Turn speed and heading into forward/rotate:
+            double headingToGo = localization.directionTo(xInches, yInches);
+            localization.convertSpeedDirection(currentSpeed, headingToGo);
+            double forward = Localization.getForwardCommand(localization.newForward);
+            double right = Localization.getRightCommand(localization.newRight);
+
+            // Keep rotation on target:
+            degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+            double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
+
+            drive(forward, right, rotateP);
+            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
+                    forward, right, rotateP);
+        }
+        drive(0,0,0);
+    }
+
     /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
      - Assumes zero speed at beginning and end of operation.
      - Locks heading to given value during operation.
@@ -713,7 +780,7 @@ public class Auton_Basic extends LinearOpMode {
             double speedToGo_inchPerSec = Math.sqrt( 2 * accel_InchPerSec2 * distanceToGo );
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentSpeed = applyLimits(speedToGo_inchPerSec, currentSpeed, accel_InchPerSec2, speed_inchPerSec, dt);
+            currentSpeed = applyLimitsOneSided(speedToGo_inchPerSec, currentSpeed, accel_InchPerSec2, speed_inchPerSec, dt);
 
             // Turn speed and heading into forward/rotate:
             localization.convertSpeedDirection(currentSpeed, headingToGo);
@@ -812,7 +879,7 @@ public class Auton_Basic extends LinearOpMode {
             double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) ) * Math.signum(degreesToGoCCW) ;
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentDegPerSec = applyLimits(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
+            currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
 
             // Convert from deg/sec to motor power:
             double rotate = Localization.getRotateCommand(Math.toRadians(currentDegPerSec));

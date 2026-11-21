@@ -29,9 +29,7 @@
 
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Utility;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 
 @Utility(name="Calibrate Distance")
@@ -105,14 +103,14 @@ public class Utility_DistanceCal extends Auton_Basic {
                 double distFwd = targetFwd - localization.getX();
                 double forward = Math.sqrt( 2 * ACCEL * distFwd );
                 // Use rate limiter to apply smooth _acceleration_ and cap to desired speed:
-                currentForward = applyLimits(forward, currentForward, ACCEL, SPEED, dt);
+                currentForward = applyLimitsOneSided(forward, currentForward, ACCEL, SPEED, dt);
             }
             else if( targetRight != 0 ){
                 // Calculate forward command for smooth deceleration using kinematics equation:
                 double distRight = targetRight - localization.getY();
                 double right     = Math.sqrt( 2 * ACCEL * Math.abs(distRight) ) * Math.signum(distRight);
                 // Use rate limiter to apply smooth _acceleration_ and cap to desired speed:
-                currentRight = applyLimits(right, currentRight, ACCEL, SPEED, dt);
+                currentRight = applyLimitsOneSided(right, currentRight, ACCEL, SPEED, dt);
             }
             // Keep rotation on target:
             double rotate = localization.getHeadingDeg() * ANGLE_P;
