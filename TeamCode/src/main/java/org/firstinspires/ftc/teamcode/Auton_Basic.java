@@ -250,6 +250,8 @@ public class Auton_Basic extends LinearOpMode {
     // without repeating all the setup code.
     public void doAuton()
     {
+        localization.setPose(9, 9, 90);
+
         // Step 1 move forward 6 inches
         while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_PARKING && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Moving Forward)");
@@ -396,8 +398,9 @@ public class Auton_Basic extends LinearOpMode {
             distance = distances.getLeft_inches();
         }
         double right = (leftDist_inches - distance) * 25.4 * Calibration.LASER_DIST_GAIN_P;
-        right = Math.min(Math.max(right, -Calibration.LASER_DIST_MAXPOWER), Calibration.LASER_DIST_MAXPOWER); // Limit to max left/right command
+        right = Math.max(Math.min(right, Calibration.LASER_DIST_MAXPOWER), -Calibration.LASER_DIST_MAXPOWER); // Limit to max left/right command
 
+        telemetry.addData("holdPositionLeft", "tgtt %.1f dist %.1f right %.1f", leftDist_inches, distance, right);
         strafeAlongWall(wallDist_inches, right);
     }
 
