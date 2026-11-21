@@ -186,6 +186,7 @@ public class Teleop_BothTeams extends OpMode {
         if( prevRedTeam != null ){
             teamChosen = true;
             redTeam = prevRedTeam;
+            aprilSensing.setTeamColor(teamColor());
         }
     }
 
@@ -228,11 +229,13 @@ public class Teleop_BothTeams extends OpMode {
             // B button is red so it sets red team
             redTeam = true;
             teamChosen = true;
+            aprilSensing.setTeamColor(teamColor());
             blackboard.put(KEY_REDTEAM, true); // Save in case we forget to set it next time
         } else if (gamepad1.x) {
             // X button is blue so it sets blue team
             redTeam = false;
             teamChosen = true;
+            aprilSensing.setTeamColor(teamColor());
             blackboard.put(KEY_REDTEAM, false); // Save in case we forget to set it next time
         }
         telemetry.update();

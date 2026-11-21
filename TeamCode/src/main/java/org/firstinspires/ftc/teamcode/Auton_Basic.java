@@ -820,19 +820,14 @@ public class Auton_Basic extends LinearOpMode {
         // Turn on intake.
         intakeOn();
 
-        // jam into flower, wait 2 seconds
-        autoSlideTo(drainX, drainY, heading);
+        // jam into flower and back up, repeat as necessary
+        for( int i=0; i < Calibration.FLOWER_DRAIN_CYCLES; i++ ) {
+            autoSlideTo(drainX, drainY, heading);
+            autoSlideTo(startX, startY, heading);
+        }
 
-        // Back up to starting position, then do it again:
-        autoSlideTo(startX, startY, heading);
-        autoSlideTo(drainX, drainY, heading);
-        autoSlideTo(startX, startY, heading);
-        autoSlideTo(drainX, drainY, heading);
-
-        // back up to starting position, raise bar, and turn off intake
-        autoSlideTo(startX, startY, heading);
+        // Raise bar, leave intake on
         flowerBarUp();
-        //intakeOff();
     }
 
     /** Auto loop to just wait for a set number of seconds */
