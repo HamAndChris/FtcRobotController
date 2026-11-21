@@ -90,7 +90,7 @@ public class Auton_HighSide_2 extends Auton_Basic {
         autoStrafeAlongWallToDistance(42);
 
         // backup to wall and hold wall distance in case we get bumped
-        autoHoldDistance(Calibration.AUTON_DIST_PARKING);
+        autoHoldDistance(Calibration.AUTON_DIST_PARKING_REAR);
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED
     }

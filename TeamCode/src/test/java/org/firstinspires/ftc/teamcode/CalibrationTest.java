@@ -37,7 +37,7 @@ public class CalibrationTest {
 
         // Check for values outside the limits of the sensor:
         double maxLaserDist = 1000/25.4;
-        assertTrue(Calibration.AUTON_DIST_PARKING <= maxLaserDist);
+        assertTrue(Calibration.AUTON_DIST_PARKING_REAR <= maxLaserDist);
         assertTrue(Calibration.AUTON_STRAFE_DIST <= maxLaserDist);
     }
 }

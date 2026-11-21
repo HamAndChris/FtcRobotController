@@ -245,6 +245,8 @@ public class Localization {
     public double getRobotVy()  { return robotVyInPerSec; }
     /** Turn rate (rad/s), CCW positive. */
     public double getOmega()    { return omegaRadPerSec; }
+    /** Turn rate (deg/s), CCW positive. */
+    public double getOmegaDeg()    { return Math.toDegrees(omegaRadPerSec); }
     /** Robot overall velocity (inch/s). */
     public double getRobotSpeed()  {
         return Math.hypot(robotVyInPerSec, robotVxInPerSec);

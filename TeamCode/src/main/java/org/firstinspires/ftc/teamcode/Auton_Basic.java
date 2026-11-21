@@ -253,7 +253,7 @@ public class Auton_Basic extends LinearOpMode {
         localization.setPose(9, 9, 90);
 
         // Step 1 move forward 6 inches
-        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_PARKING && runtime.seconds() < 3 ) {
+        while( opModeIsActive() && distances.WallDist_inches < Calibration.AUTON_DIST_PARKING_REAR && runtime.seconds() < 3 ) {
             beginLoop("Step 1 (Moving Forward)");
             drive(0.2, 0, 0);
         }
@@ -262,7 +262,7 @@ public class Auton_Basic extends LinearOpMode {
         // But stop at 30 seconds to avoid penalties
         while( opModeIsActive() && timesNotUp() ) {
             beginLoop("Step 2 (Parking)");
-            holdPositionLeft(Calibration.AUTON_DIST_PARKING, SLIDE_RIGHT_DIST);
+            holdPositionLeft(Calibration.AUTON_DIST_PARKING_REAR, SLIDE_RIGHT_DIST);
         }
 
         // Done! Now runOpMode() will take over and disable drives and LED 
@@ -356,6 +356,11 @@ public class Auton_Basic extends LinearOpMode {
 
     /** Auto loop to strafe along the driver wall until the left distance sensor detects we're the correct distance from the left wall */
     void autoStrafeAlongWallToDistance(double leftWallDist_inches){
+        autoStrafeAlongWallToDistance(Calibration.AUTON_STRAFE_DIST, leftWallDist_inches);
+    }
+
+    /** Auto loop to strafe along the driver wall until the left distance sensor detects we're the correct distance from the left wall */
+    void autoStrafeAlongWallToDistance(double rearWallDist_inches, double leftWallDist_inches){
         String label = String.format("autoStrafe to %.1f inches", leftWallDist_inches);
         double strafeSpeed_inchPerSec = Calibration.AUTON_STRAFE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
         double accel_InchPerSec2      = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
@@ -383,7 +388,7 @@ public class Auton_Basic extends LinearOpMode {
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
             currentSpeed = applyLimitsOneSided(speedToGo, currentSpeed, accel_InchPerSec2, strafeSpeed_inchPerSec, dt);
-            strafeAlongWall(Calibration.AUTON_STRAFE_DIST, Localization.getRightCommand(currentSpeed));
+            strafeAlongWall(rearWallDist_inches, Localization.getRightCommand(currentSpeed));
 
         } while( opModeIsActive() && timesNotUp() && Math.abs(distance - leftWallDist_inches) > Calibration.AUTON_DIST_THRESHOLD );
     }
@@ -872,6 +877,56 @@ public class Auton_Basic extends LinearOpMode {
 
             // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
             double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) ) * Math.signum(degreesToGoCCW) ;
+
+            // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
+            currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
+
+            // Convert from deg/sec to motor power:
+            double rotate = Localization.getRotateCommand(Math.toRadians(currentDegPerSec));
+
+            // Apply control loop to keep position constant:
+            double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
+            double pY = (originalY - localization.getY()) * Calibration.AUTON_POSITION_GAIN_P;
+            localization.convertFieldRelative(pY, pX, rotate);
+
+            drive(localization.newForward, localization.newRight, rotate);
+            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
+                    localization.newForward, localization.newRight, rotate);
+        }
+        drive(0,0,0);
+    }
+    /** Auto loop to smoothly rotate to a desired heading (CCW degrees field-relative).
+     - Assumes zero rotation speed at beginning and end of operation.
+     - Locks position current value during operation.
+     - Assumes you are starting from a standstill.
+     - Stops trying once within decel range */
+    void autoRotateToAbout(double newHeadingDeg)
+    {
+        double originalX = localization.getX();
+        double originalY = localization.getY();
+
+        double currentDegPerSec = 0;
+        double now = runtime.seconds();
+        double lastTime = now;
+        double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+        boolean decelerating = false;
+        String label = String.format("autoRotateToAbout(%.1f)", newHeadingDeg);
+
+        while( opModeIsActive() && timesNotUp() && Math.abs(localization.getOmegaDeg()) > Calibration.AUTON_STOPPED_ROTATING_THRESHOLD ){
+            beginLoop(label);
+
+            // Calculate timestep:
+            now = runtime.seconds();
+            double dt = now - lastTime;
+            lastTime = now;
+
+            // Calculate new distance and heading to target:
+            degreesToGoCCW = localization.diffFromHeadingDeg(newHeadingDeg);
+
+            // Decide whether we're in the deceleration zone using kinematics equation:
+            double decelSpeed_degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) );
+            decelerating = decelerating || Math.abs(localization.getOmegaDeg()) >= decelSpeed_degPerSec;
+            double degPerSec = decelerating ? 0 : Calibration.AUTON_ROTATE_SPEED;
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
             currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);

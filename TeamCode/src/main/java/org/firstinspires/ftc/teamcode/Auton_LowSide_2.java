@@ -89,7 +89,7 @@ public class Auton_LowSide_2 extends Auton_Basic {
 
         // Step 6: backup to wall and hold wall distances in case we get bumped
         // But stop at 30 seconds to avoid penalties
-        autoHoldDistances(Calibration.AUTON_DIST_PARKING, 12);
+        autoHoldDistances(Calibration.AUTON_DIST_PARKING_REAR, Calibration.AUTON_DIST_PARKING_LEFT1);
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED
     }

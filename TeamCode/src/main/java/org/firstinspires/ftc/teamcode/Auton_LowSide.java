@@ -30,8 +30,10 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 @Autonomous(name="Low Side", group="Robot")
+@Disabled
 public class Auton_LowSide extends Auton_Basic {
     @Override
     public String modeDescription(){
@@ -97,7 +99,7 @@ public class Auton_LowSide extends Auton_Basic {
         //         Stop at 30 seconds to avoid penalties
         while( opModeIsActive() && timesNotUp() ){
             beginLoop("Step 6 (Park)");
-            strafeAlongWall(Calibration.AUTON_DIST_PARKING, 0);
+            strafeAlongWall(Calibration.AUTON_DIST_PARKING_REAR, 0);
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED

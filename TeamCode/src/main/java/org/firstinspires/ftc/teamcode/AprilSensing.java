@@ -43,7 +43,8 @@ public class AprilSensing {
         // meaning the camera is horizontal. Use a yaw of 0 if the camera is pointing forwards,
         // +90 degrees if it’s pointing straight left, -90 degrees for straight right, etc.
         // You can also set the roll to +/-90 degrees if it’s vertical, or 180 degrees if it’s upside-down.
-        YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES, 0, -90+38, 0, 0);
+        YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES,
+                0, -90 + Calibration.APRIL_CAMERA_ELEVATION, 0, 0);
 
         // Initialize camera:
         //aprilTag = AprilTagProcessor.easyCreateWithDefaults();
@@ -108,8 +109,9 @@ public class AprilSensing {
                 telemetry.addData("Robot","XYZ %6.1f %6.1f %6.1f RPY %6.1f %6.1f %6.1f",
                         pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw());
                 // Debugging: also print hive field position
-                telemetry.addData("Hive Pos","XYZ %s", clusterDet.metadata.fieldPosition);
-                telemetry.addData("Hive Quat","%s", clusterDet.metadata.fieldOrientation);
+                //telemetry.addData("Hive Pos","XYZ %s", clusterDet.metadata.fieldPosition);
+                //telemetry.addData("Hive Quat","%s", clusterDet.metadata.fieldOrientation);
+                telemetry.addData("Tag Height", "%.1f", clusterHeight(clusterDet));
 
                 // Find the hive that's the correct color, and tipped upwards (not upside down)
                 if( name.contains(TeamColor) && hiveIsTippedUp(clusterDet) ){
@@ -170,6 +172,12 @@ public class AprilSensing {
                 && Math.abs(pos.z) < 6            // Valid robot pose (near the floor)
                 && Math.abs(orx.getPitch()) < 5   // Valid robot pose (robot upright)
                 && Math.abs(orx.getRoll()) < 5;   // Valid robot pose (robot upright)
+    }
+
+    /** Calculate the height of the detection based on trigonometry */
+    private double clusterHeight(AprilTagClusterDetection cluster){
+        double elevation = Math.toRadians(cluster.ftcPose.elevation + Calibration.APRIL_CAMERA_ELEVATION);
+        return Math.sin(elevation) * cluster.ftcPose.range;
     }
 
     /** Determine whether the detected hive is in the "up" position */
