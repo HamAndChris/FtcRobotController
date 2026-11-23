@@ -321,7 +321,7 @@ public class Teleop_BothTeams extends OpMode {
         if( operatorGamepad.left_trigger > 0.2 ){
             setIntakeOut();
         }
-        else if( operatorGamepad.right_trigger > 0.2 ){
+        else if( operatorGamepad.right_trigger > 0.2 && catapultState == CatapultState.DOWN ){
             intakeOn();
         }
         else {

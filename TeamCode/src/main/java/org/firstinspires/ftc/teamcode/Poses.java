@@ -17,7 +17,7 @@ public class Poses {
 
     /** Left ideal firing position */
     public static final Pose2D LEFT_FIRING = new Pose2D(DistanceUnit.INCH,
-            24, 48,
+            24, 56,
             AngleUnit.DEGREES, 0);
 
     /** Left ideal firing position */
@@ -32,6 +32,6 @@ public class Poses {
 
     /** Intermediate step for traveling from right side to left side */
     public static final Pose2D RIGHT_TO_LEFT_WAYPOINT = new Pose2D(DistanceUnit.INCH,
-            124, 32,
+            36, 30,
             AngleUnit.DEGREES, 45);
 }

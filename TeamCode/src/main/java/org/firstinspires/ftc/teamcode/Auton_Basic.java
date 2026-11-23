@@ -715,6 +715,7 @@ public class Auton_Basic extends LinearOpMode {
         double accel_InchPerSec2  = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
         boolean decelerating = localization.inDecelRadius(xInches, yInches, accel_InchPerSec2);
         String label = String.format("autoSlideToAbout(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
+        double currentRotateP = 0;
 
         while( opModeIsActive() && timesNotUp()
                 && (!decelerating
@@ -745,6 +746,7 @@ public class Auton_Basic extends LinearOpMode {
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
             double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
+            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_MOTOR_SPEED, dt);
 
             drive(forward, right, rotateP);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
@@ -766,6 +768,7 @@ public class Auton_Basic extends LinearOpMode {
         double speed_inchPerSec   = Calibration.AUTON_SLIDE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
         double accel_InchPerSec2  = Calibration.AUTON_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
         String label = String.format("autoSlideTo(%.1f, %.1f, %.1f)", xInches, yInches, headingDeg);
+        double currentRotateP = 0;
 
         while( opModeIsActive() && timesNotUp()
                 && (distanceToGo > Calibration.AUTON_DIST_THRESHOLD
@@ -795,10 +798,11 @@ public class Auton_Basic extends LinearOpMode {
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
             double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
+            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_MOTOR_SPEED, dt);
 
-            drive(forward, right, rotateP);
+            drive(forward, right, currentRotateP);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
-                    forward, right, rotateP);
+                    forward, right, currentRotateP);
         }
         drive(0,0,0);
     }
@@ -912,7 +916,8 @@ public class Auton_Basic extends LinearOpMode {
         boolean decelerating = false;
         String label = String.format("autoRotateToAbout(%.1f)", newHeadingDeg);
 
-        while( opModeIsActive() && timesNotUp() && Math.abs(localization.getOmegaDeg()) > Calibration.AUTON_STOPPED_ROTATING_THRESHOLD ){
+        while( opModeIsActive() && timesNotUp()
+                && !( decelerating && Math.abs(localization.getOmegaDeg()) <= Calibration.AUTON_STOPPED_ROTATING_THRESHOLD) ){
             beginLoop(label);
 
             // Calculate timestep:

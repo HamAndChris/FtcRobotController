@@ -36,7 +36,7 @@ public class AprilSensing {
 
         // Origin location: Center of the robot at field height
         // Axes orientation: +x right, +y forward, +z upward
-        Position cameraPosition = new Position(DistanceUnit.INCH, 3.9, 8.5, 12.125, 0);
+        Position cameraPosition = new Position(DistanceUnit.INCH, 3.9, 8.5, Calibration.APRIL_CAMERA_HEIGHT, 0);
 
         // If all values are zero (no rotation), that implies the camera is pointing straight up.
         // In most cases, you’ll need to set the pitch to -90 degrees (rotation about the x-axis),
@@ -88,7 +88,7 @@ public class AprilSensing {
     
     public void performSensing(double forward, double right, double rotate) {
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-        telemetry.addData("# AprilTags Detected", currentDetections.size());
+        //telemetry.addData("# AprilTags Detected", currentDetections.size());
         Detected = false;
         OnTarget = false;
         Rotate = rotate;

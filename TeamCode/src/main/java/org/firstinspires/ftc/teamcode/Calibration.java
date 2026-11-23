@@ -16,7 +16,7 @@ public final class Calibration {
     public static final boolean SINGLE_GAMEPAD_MODE = false;
     public static final boolean USE_FIELD_RELATIVE  = false;
     public static final double  TELEOP_POWER_LEVEL  = 1.0; // 1.0 = full speed
-    public static final int     FLOWER_DRAIN_CYCLES = 2; // Number of times to move forward and back while draining flowers
+    public static final int     FLOWER_DRAIN_CYCLES = 3; // Number of times to move forward and back while draining flowers
 
     // Hardware changes:
     public static final boolean DISABLE_I2C_DISTANCE_SENSORS = true;
@@ -27,6 +27,7 @@ public final class Calibration {
     public static final double APRIL_TARGET_BEARING = 0.0;  // Adjust this to make robot aim to the left/right (higher = more left)
     public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
     public static final double APRIL_CAMERA_ELEVATION = 38; // Degrees: How far above horizontal camera is aimed
+    public static final double APRIL_CAMERA_HEIGHT = 12.125; // Inches: Height of camera lens above ground
     public static final double APRIL_HIVE_UP_MIN_HEIGHT = 30; // Inches: How high a hive cluster is before we consider it tipped up
 
     // Autonomous behavior calibrations:
@@ -39,7 +40,7 @@ public final class Calibration {
     /** Inches: Distance to left wall in parking zone at end of autonomy, leftmost option */
     public static final double AUTON_DIST_PARKING_LEFT1 = 12;
     /** Inches: Distance to left wall in parking zone at end of autonomy, rightmost option */
-    public static final double AUTON_DIST_PARKING_LEFT2 = 54;
+    public static final double AUTON_DIST_PARKING_LEFT2 = 48;
     /** Inches: Distance from center of robot to wall when strafing */
     public static final double AUTON_STRAFE_DIST  = 16;
     /** Inches: Distance from center of robot to wall to approach flowers */
@@ -54,9 +55,9 @@ public final class Calibration {
     /** MotorSpeed: Default translation speed for autoSlideTo() operations */
     public static final double AUTON_SLIDE_SPEED = 0.8;
     /** Deg/sec: Default rotational speed for operations */
-    public static final double AUTON_ROTATE_SPEED = 120;
+    public static final double AUTON_ROTATE_SPEED = 135;
     /** MotorSpeed: Translated from angle speed */
-    public static final double AUTON_ROTATE_MOTOR_SPEED = Math.abs(Localization.getRotateCommand(Math.toRadians(AUTON_ROTATE_SPEED)));
+    public static final double AUTON_ROTATE_MOTOR_SPEED = 0.5;
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
     public static final double AUTON_ACCEL          = 0.8;
     /** Inches: Distance for translational movements to be considered "at target" */
@@ -72,7 +73,7 @@ public final class Calibration {
     /** Sec: IMU angle alignment "done" time threshold */
     public static final double AUTON_ANGLE_SETTLING = 0.25;
     /** MotorSpeed/Deg: IMU angle alignment proportional gain */
-    public static final double AUTON_ANGLE_GAIN_P = 0.3/45;
+    public static final double AUTON_ANGLE_GAIN_P = 0.5/45;
     /** Speed/inch: Position holding proportional gain */
     public static final double AUTON_POSITION_GAIN_P = 0.05;
 

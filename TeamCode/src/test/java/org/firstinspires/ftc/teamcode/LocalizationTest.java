@@ -43,6 +43,46 @@ public class LocalizationTest {
         assertTrue( localization.inDecelRadius(7, 7, 10), "Inside decel radius");
     }
 
+    @Test public void testDiffFromHeadingDeg(){
+        double[][] testCases = {
+                // Robot heading, target heading, difference
+                {   0,    0,    0 },
+                {   0,   90,   90 },
+                {   0,  179,  179 },
+                {   0,  -90,  -90 },
+                {   0, -179, -179 },
+                {   0,  350,  -10 },
+                {   0, -350,   10 },
+                {  90,   90,    0 } ,
+                {  90,  181,   91 },
+                {  90,  -91,  179 },
+                { 179, -179,    2 },
+                {-179,  179,   -2 },
+                {-178, -179,   -1 },
+                {-179, -178,    1 },
+                { 178,  179,    1 },
+                { 179,  178,   -1 },
+        };
+
+        for (double[] tc : testCases) {
+            double headingDeg = tc[0];
+            double targetDeg = tc[1];
+
+            localization.setHeadingDeg(headingDeg);
+            double result = localization.diffFromHeadingDeg(targetDeg);
+
+            String message = String.format(
+                    "Heading=%.0f°, Direction=%.0f°",
+                    headingDeg, targetDeg
+            );
+
+            assertEquals(tc[2], result, TOLERANCE, message);
+        }
+
+    }
+
+
+
     /** Test all possible combinations of heading and direction through this function so it never hurts us again */
     @Test public void testConvertSpeedDirection() throws Exception {
         // {headingDeg, directionDeg, speed, expectedForward, expectedRight}
