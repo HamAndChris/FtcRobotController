@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 public class LocalizationTest {
@@ -24,13 +25,17 @@ public class LocalizationTest {
     }
 
     @Test public void testRotationCommandCalcs() {
-        double[] testCases = {0, 0.5, -1, 1, 1.5};
+        // Make sure ratio matches the measured result from earlier:
+        assertEquals(0.2649, Localization.findRotateCommand(-1.0), 0.01, "Rotation calculation matches measured");
+
+        // Make sure forward and backwards conversion between angular rate and command match:
+        double[] testCases = {0, 0.5, -0.5, -1, 1};
         for (double rotate : testCases) {
             double rads = -Localization.calculateRotationRadPerSec(rotate);
             double result = Localization.findRotateCommand(rads);
             assertEquals(rotate, result, String.format("Rotating %.1f deg/s", Math.toDegrees(rads)));
         }
-        // Intentionall clip:
+        // Intentionally clip:
         double rotate = 1.5;
         double rate = -Localization.calculateRotationRadPerSec(rotate);
         double result = Localization.findRotateCommand(rate);

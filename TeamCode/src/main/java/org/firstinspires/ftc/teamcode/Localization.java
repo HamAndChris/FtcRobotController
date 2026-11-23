@@ -27,10 +27,11 @@ public class Localization {
     // Drive 100" and multiply by (100 / measured). Do the same for a 100" strafe.
     public static final double FORWARD_MULTIPLIER = 1.005;
     public static final double STRAFE_MULTIPLIER  = 0.92;
-    public static final double ROTATE_MULTIPLIER  = 0.38;
+    public static final double ROTATE_MULTIPLIER  = 0.903; // Will need to recalibrate if width/length is changed
 
     // Some geometry:
-    public static final double TRACKWIDTH_INCH = 16; // May not be precise, but ROTATE_MULTIPLIER was calibrated at 16
+    public static final double TRACKWIDTH_INCH  = 16; // Wheel center to wheel center, left-to-right
+    public static final double TRACKLENGTH_INCH = 16; // Wheel center to wheel center, front-to-back
 
 
     // Internal state variables:
@@ -313,7 +314,9 @@ public class Localization {
 
     /** Get the rotation command for a desired angular rate in CCW radians/s */
     public static double findRotateCommand(double radiansPerSec){
-        double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*TRACKWIDTH_INCH/2;
+        double radius = Math.hypot(TRACKLENGTH_INCH/2, TRACKWIDTH_INCH/2);  // How far each wheel is from robot center
+        double scrubRatio = TRACKWIDTH_INCH/2 / radius;                     // How much of the motor speed is actually applied to turning the robot
+        double desiredWheelSpeed_inchPerSec = radiansPerSec * radius / scrubRatio;
         double desiredMotorSpeed = -desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
         return Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
     }
@@ -321,9 +324,10 @@ public class Localization {
     /** Estimate the rotational speed that would result from a given "rotate" command.
      *  Note: rotational rate will be the same sign as rotateCmd, which means direction is inverted. */
     public static double calculateRotationRadPerSec(double rotateCmd){
-        double decimate = 0.01; // Math.asin can only work with values less than 1
-        double wheelSpeed_inchPerSec = rotateCmd * Calibration.MAX_SPEED_INCHES_PER_S * decimate;
-        return Math.asin(wheelSpeed_inchPerSec / (TRACKWIDTH_INCH/2)) / decimate * ROTATE_MULTIPLIER;
+        double wheelSpeed_inchPerSec = rotateCmd * Calibration.MAX_SPEED_INCHES_PER_S;
+        double radius = Math.hypot(TRACKLENGTH_INCH/2, TRACKWIDTH_INCH/2);  // How far each wheel is from robot center
+        double scrubRatio = TRACKWIDTH_INCH/2 / radius;                     // How much of the motor speed is actually applied to turning the robot
+        return wheelSpeed_inchPerSec / radius * scrubRatio * ROTATE_MULTIPLIER;
     }
 
     /** Estimate the rotational speed that would result from a given "rotate" command.
