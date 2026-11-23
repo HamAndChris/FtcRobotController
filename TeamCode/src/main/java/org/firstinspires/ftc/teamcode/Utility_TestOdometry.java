@@ -30,6 +30,7 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Utility;
+import com.qualcomm.robotcore.hardware.Gamepad;
 
 
 @Utility(name="Test Odometry")
@@ -58,35 +59,64 @@ public class Utility_TestOdometry extends Auton_Basic {
         localization.setPose(0,0,0);
         double targetX = 0, targetY = 0, targetHeading = 0;
         double flowerBarPos = Calibration.FLOWER_BAR_UP;
+        boolean collecting = false;
 
         // Wait for user to press the D-pad direction they wish to go:
         while( opModeIsActive() ){
-            beginLoop("Waiting for input");
+            beginLoop("Ready");
             telemetry.addData("Press D-Pad", "translate %.1f inches", DISTANCE);
             telemetry.addData("Press Bumpers", "rotate %.1f degrees", ANGLE);
-            if( gamepad1.dpad_up ){
+            telemetry.addData("Press (B)/(Y)", "Flower Bar (%.2f %%)", flowerBarPos);
+            telemetry.addLine();
+            telemetry.addLine("Hold (A) to combine movements.");
+
+            if( gamepad1.a ){
+                // Begin collecting movements
+                collecting = true;
+            }
+            if( gamepad1.dpadUpWasPressed() ){
+                collecting = true;
                 targetX += DISTANCE;
-                autoSlideTo(targetX, targetY, targetHeading);
             }
-            else if( gamepad1.dpad_down ){
+            if( gamepad1.dpadDownWasPressed() ){
+                collecting = true;
                 targetX -= DISTANCE;
-                autoSlideTo(targetX, targetY, targetHeading);
             }
-            else if( gamepad1.dpad_right ){
+            if( gamepad1.dpadRightWasPressed() ){
+                collecting = true;
                 targetY -= DISTANCE;
-                autoSlideTo(targetX, targetY, targetHeading);
             }
-            else if( gamepad1.dpad_left ){
+            if( gamepad1.dpadLeftWasPressed() ){
+                collecting = true;
                 targetY += DISTANCE;
-                autoSlideTo(targetX, targetY, targetHeading);
             }
-            else if( gamepad1.left_bumper ){
+            if( gamepad1.leftBumperWasPressed() ){
                 targetHeading += ANGLE;
-                autoRotateTo(targetHeading);
+                // Single rotate commands should be executed immediately:
+                if( !collecting ) {
+                    autoRotateTo(targetHeading);
+                }
             }
-            else if( gamepad1.right_bumper ){
+            if( gamepad1.rightBumperWasPressed() ){
                 targetHeading -= ANGLE;
-                autoRotateTo(targetHeading);
+                // Single rotate commands should be executed immediately:
+                if( !collecting ) {
+                    autoRotateTo(targetHeading);
+                }
+            }
+
+            if( !gamepad1.a && collecting ){
+                // A was released (or a single button was pressed). Apply movement
+                autoSlideTo(targetX, targetY, targetHeading);
+
+                // Clear all the 'was pressed' logic so it doesn't start moving at the end
+                gamepad1.dpadUpWasPressed();
+                gamepad1.dpadDownWasPressed();
+                gamepad1.dpadRightWasPressed();
+                gamepad1.dpadLeftWasPressed();
+                gamepad1.leftBumperWasPressed();
+                gamepad1.rightBumperWasPressed();
+                collecting = false;
             }
 
             // Flower bar:
@@ -98,8 +128,7 @@ public class Utility_TestOdometry extends Auton_Basic {
                 flowerBarPos += 0.005;
                 setPositionCached(flowerBar, flowerBarPos);
             }
-            telemetry.addData("Flower Bar (press B/Y)", "%.2f %%", flowerBarPos);
-            telemetry.addData("Target Heading", "%.1f deg", targetHeading);
+            telemetry.addData("Target X/Y/Heading", "%.0f, %.0f inch, %.0f deg", targetX, targetY, targetHeading);
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED
