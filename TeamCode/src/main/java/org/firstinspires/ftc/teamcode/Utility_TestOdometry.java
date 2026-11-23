@@ -60,6 +60,7 @@ public class Utility_TestOdometry extends Auton_Basic {
         double targetX = 0, targetY = 0, targetHeading = 0;
         double flowerBarPos = Calibration.FLOWER_BAR_UP;
         boolean collecting = false;
+        boolean move3D = false;
 
         // Wait for user to press the D-pad direction they wish to go:
         while( opModeIsActive() ){
@@ -68,7 +69,8 @@ public class Utility_TestOdometry extends Auton_Basic {
             telemetry.addData("Press Bumpers", "rotate %.1f degrees", ANGLE);
             telemetry.addData("Press (B)/(Y)", "Flower Bar (%.2f %%)", flowerBarPos);
             telemetry.addLine();
-            telemetry.addLine("Hold (A) to combine movements.");
+            telemetry.addLine("Hold (A) to combine movements. Start toggles 3D.");
+            telemetry.addLine();
 
             if( gamepad1.a ){
                 // Begin collecting movements
@@ -104,10 +106,17 @@ public class Utility_TestOdometry extends Auton_Basic {
                     autoRotateTo(targetHeading);
                 }
             }
+            if( gamepad1.startWasPressed() ){
+                move3D = !move3D;
+            }
 
             if( !gamepad1.a && collecting ){
                 // A was released (or a single button was pressed). Apply movement
-                autoSlideTo(targetX, targetY, targetHeading);
+                if( move3D ){
+                    autoSlideTo3D(targetX, targetY, targetHeading);
+                } else {
+                    autoSlideTo(targetX, targetY, targetHeading);
+                }
 
                 // Clear all the 'was pressed' logic so it doesn't start moving at the end
                 gamepad1.dpadUpWasPressed();
@@ -116,6 +125,7 @@ public class Utility_TestOdometry extends Auton_Basic {
                 gamepad1.dpadLeftWasPressed();
                 gamepad1.leftBumperWasPressed();
                 gamepad1.rightBumperWasPressed();
+                gamepad1.startWasPressed();
                 collecting = false;
             }
 
@@ -128,7 +138,8 @@ public class Utility_TestOdometry extends Auton_Basic {
                 flowerBarPos += 0.005;
                 setPositionCached(flowerBar, flowerBarPos);
             }
-            telemetry.addData("Target X/Y/Heading", "%.0f, %.0f inch, %.0f deg", targetX, targetY, targetHeading);
+            telemetry.addData("Target X/Y/Heading", "%.0f, %.0f inch, %.0f deg%s",
+                    targetX, targetY, targetHeading, move3D ? ", 3D motion" : "");
         }
 
         // Done! Now Auton_Basic.java will take over and disable drives and LED

@@ -321,6 +321,11 @@ public class Localization {
         return Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
     }
 
+    /** Get the rotation command for a desired angular rate in CCW radians/s */
+    public static double findRotateCommandDeg(double degreesPerSec){
+        return findRotateCommand(Math.toRadians(degreesPerSec));
+    }
+
     /** Estimate the rotational speed that would result from a given "rotate" command.
      *  Note: rotational rate will be the same sign as rotateCmd, which means direction is inverted. */
     public static double calculateRotationRadPerSec(double rotateCmd){

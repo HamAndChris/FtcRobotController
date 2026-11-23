@@ -60,6 +60,8 @@ public final class Calibration {
     public static final double AUTON_ACCEL          = 0.8;
     /** MotorSpeed/sec: How quickly to ramp up/down rotational movements */
     public static final double AUTON_ROTATE_ACCEL   = 0.8;
+    /** MotorSpeed/sec: How quickly to ramp up/down combined translational/rotational movements */
+    public static final double AUTON_COMBINED_ACCEL  = 0.8;
     /** Inches: Distance for translational movements to be considered "at target" */
     public static final double AUTON_DIST_THRESHOLD = 2.0;
     /** InchesPerSec: Speed for translational movements to be considered "stopped" */

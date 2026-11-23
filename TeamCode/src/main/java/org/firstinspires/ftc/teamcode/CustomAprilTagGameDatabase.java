@@ -37,11 +37,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Quaternion;
 import org.firstinspires.ftc.vision.apriltag.AprilTagClusterMemberMetadata;
 import org.firstinspires.ftc.vision.apriltag.AprilTagClusterMetadata;
+import org.firstinspires.ftc.vision.apriltag.AprilTagGameDatabase;
 import org.firstinspires.ftc.vision.apriltag.AprilTagLibrary;
 
 import java.util.ArrayList;
 
-public class CustomAprilTagGameDatabase
+public class CustomAprilTagGameDatabase extends AprilTagGameDatabase
 {
     // Measurements pulled from official OnShape field CAD
     public static final double FIELD_CENTER_Y   = 72;

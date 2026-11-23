@@ -807,6 +807,60 @@ public class Auton_Basic extends LinearOpMode {
         drive(0,0,0);
     }
 
+    /** Auto loop to smoothly drive to a desired X/Y position in a straight line using odometry.
+     - Assumes zero speed at beginning and end of operation.
+     - Performs a 3-dimensional straight line movement so rotation and position should arrive at the same time. */
+    void autoSlideTo3D(double xInches, double yInches, double headingDeg)
+    {
+        double currentSpeed3D = 0;
+        double lastTime = runtime.seconds();
+        double xyDistanceToGo = localization.distanceTo(xInches, yInches);
+        double degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+        double speed_inchPerSec   = Calibration.AUTON_SLIDE_SPEED * Calibration.MAX_SPEED_INCHES_PER_S;
+        double rotSpeed_degPerSec = Localization.calculateRotationDegPerSec(Calibration.AUTON_ROTATE_SPEED);
+        double ratio_inchPerDeg = speed_inchPerSec / rotSpeed_degPerSec;
+        double accel_InchPerSec2  = Calibration.AUTON_COMBINED_ACCEL * Calibration.MAX_SPEED_INCHES_PER_S;
+        String label = String.format("autoSlideTo3D(%.0f, %.0f, %.0f)", xInches, yInches, headingDeg);
+
+        while( opModeIsActive() && timesNotUp()
+                && (xyDistanceToGo > Calibration.AUTON_DIST_THRESHOLD
+                || Math.abs(degreesToGo) > Calibration.AUTON_ANGLE_THRESH) ){
+            beginLoop(label);
+
+            // Calculate timestep:
+            double now = runtime.seconds();
+            double dt = now - lastTime;
+            lastTime = now;
+
+            // Calculate new distance and heading to target:
+            xyDistanceToGo = localization.distanceTo(xInches, yInches);
+            degreesToGo = localization.diffFromHeadingDeg(headingDeg);
+            double distanceToGo3D = Math.hypot(xyDistanceToGo, degreesToGo*ratio_inchPerDeg);
+
+            // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
+            double speedToGo3D_inchPerSec = Math.sqrt( 2 * accel_InchPerSec2 * distanceToGo3D );
+
+            // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
+            currentSpeed3D = applyLimitsOneSided(speedToGo3D_inchPerSec, currentSpeed3D, accel_InchPerSec2, speed_inchPerSec, dt);
+
+            // Turn speed and translation direction into forward/rotate:
+            double xySpeed = distanceToGo3D > 0.01 ? (currentSpeed3D * xyDistanceToGo / distanceToGo3D) : 0;
+            double headingToTranslateDeg = localization.directionTo(xInches, yInches);
+            localization.convertSpeedDirection(xySpeed, headingToTranslateDeg);
+            double forward = Localization.findForwardCommand(localization.newForward);
+            double right = Localization.findRightCommand(localization.newRight);
+
+            // Convert Z axis back to rotation degrees/sec:
+            double rotationDegPerSec = distanceToGo3D > 0.01 ? (currentSpeed3D * degreesToGo*ratio_inchPerDeg / distanceToGo3D) : 0;
+            rotationDegPerSec *= Math.signum(degreesToGo);
+            double rotate = Localization.findRotateCommandDeg(rotationDegPerSec);
+
+            drive(forward, right, rotate);
+            telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f", forward, right, rotate);
+        }
+        drive(0,0,0);
+    }
+
     /** Auto sequence to drain a flower. Must be already lines up with robot center AUTON_DIST_FLOWER inches from the wall.
      *  Does not wait for flower bar to go down. Make sure you set it down before calling this!
      *  It does raise the flower bar afterwards though.
