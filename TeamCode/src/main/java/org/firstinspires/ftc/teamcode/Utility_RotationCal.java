@@ -53,7 +53,7 @@ public class Utility_RotationCal extends Auton_Basic {
         double coeff = 0.95;
         while(opModeIsActive()){
             beginLoop("Rotating");
-            double rotate = localization.getRotateCommand(ROTATE_RADPS);
+            double rotate = localization.findRotateCommand(ROTATE_RADPS);
             drive(0, 0, rotate);
 
             // Apply IIR filter to IMU measured rotation:

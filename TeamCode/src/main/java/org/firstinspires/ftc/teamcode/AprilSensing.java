@@ -131,7 +131,7 @@ public class AprilSensing {
                         // Use actual lateral velocity to calculate rotation rate needed:
                         double rightSpeed = -localization.getRobotVy();
                         double extraRadsPerSec = -Math.asin(rightSpeed / rotationRadius);
-                        Rotate += Localization.getRotateCommand(extraRadsPerSec);
+                        Rotate += Localization.findRotateCommand(extraRadsPerSec);
                     }
                     else {
                         Right = 0;

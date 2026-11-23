@@ -29,6 +29,9 @@ public class Localization {
     public static final double STRAFE_MULTIPLIER  = 0.92;
     public static final double ROTATE_MULTIPLIER  = 0.38;
 
+    // Some geometry:
+    public static final double TRACKWIDTH_INCH = 16; // May not be precise, but ROTATE_MULTIPLIER was calibrated at 16
+
 
     // Internal state variables:
     private double lastFl, lastFr, lastBl, lastBr, lastHeading, lastTimeNs;
@@ -309,19 +312,32 @@ public class Localization {
     }
 
     /** Get the rotation command for a desired angular rate in CCW radians/s */
-    public static double getRotateCommand(double radiansPerSec){
-        double trackWidth_inch = 16;
-        double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*trackWidth_inch/2;
+    public static double findRotateCommand(double radiansPerSec){
+        double desiredWheelSpeed_inchPerSec = Math.sin(radiansPerSec)*TRACKWIDTH_INCH/2;
         double desiredMotorSpeed = -desiredWheelSpeed_inchPerSec / Calibration.MAX_SPEED_INCHES_PER_S / ROTATE_MULTIPLIER;
         return Math.max(Math.min(desiredMotorSpeed, 1.0), -1.0);
     }
 
+    /** Estimate the rotational speed that would result from a given "rotate" command.
+     *  Note: rotational rate will be the same sign as rotateCmd, which means direction is inverted. */
+    public static double calculateRotationRadPerSec(double rotateCmd){
+        double decimate = 0.01; // Math.asin can only work with values less than 1
+        double wheelSpeed_inchPerSec = rotateCmd * Calibration.MAX_SPEED_INCHES_PER_S * decimate;
+        return Math.asin(wheelSpeed_inchPerSec / (TRACKWIDTH_INCH/2)) / decimate * ROTATE_MULTIPLIER;
+    }
+
+    /** Estimate the rotational speed that would result from a given "rotate" command.
+     *  Note: rotational rate will be the same sign as rotateCmd, which means direction is inverted. */
+    public static double calculateRotationDegPerSec(double rotateCmd){
+        return Math.toDegrees(calculateRotationRadPerSec(rotateCmd));
+    }
+
     /** Get the forward command for a desired forward speed in inches per second */
-    public static double getForwardCommand(double inchesPerSec){
+    public static double findForwardCommand(double inchesPerSec){
         return inchesPerSec / Calibration.MAX_SPEED_INCHES_PER_S / FORWARD_MULTIPLIER;
     }
     /** Get the forward command for a desired forward speed in inches per second */
-    public static double getRightCommand(double inchesPerSec){
+    public static double findRightCommand(double inchesPerSec){
         return inchesPerSec / Calibration.MAX_SPEED_INCHES_PER_S / STRAFE_MULTIPLIER;
     }
 

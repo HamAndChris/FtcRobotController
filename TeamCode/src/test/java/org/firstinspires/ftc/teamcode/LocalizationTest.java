@@ -23,6 +23,20 @@ public class LocalizationTest {
         localization = mock(Localization.class, CALLS_REAL_METHODS);
     }
 
+    @Test public void testRotationCommandCalcs() {
+        double[] testCases = {0, 0.5, -1, 1, 1.5};
+        for (double rotate : testCases) {
+            double rads = -Localization.calculateRotationRadPerSec(rotate);
+            double result = Localization.findRotateCommand(rads);
+            assertEquals(rotate, result, String.format("Rotating %.1f deg/s", Math.toDegrees(rads)));
+        }
+        // Intentionall clip:
+        double rotate = 1.5;
+        double rate = -Localization.calculateRotationRadPerSec(rotate);
+        double result = Localization.findRotateCommand(rate);
+        assertNotEquals(rotate, result, String.format("Rotating %.1f deg/s", Math.toDegrees(rate)));
+    }
+
     @Test public void testSnapTo() {
         assertEquals(0, localization.getHeadingSnappedTo(90), TOLERANCE, "Snap 0 to 90");
         localization.setHeadingDeg(46);

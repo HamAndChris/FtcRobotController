@@ -388,7 +388,7 @@ public class Auton_Basic extends LinearOpMode {
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
             currentSpeed = applyLimitsOneSided(speedToGo, currentSpeed, accel_InchPerSec2, strafeSpeed_inchPerSec, dt);
-            strafeAlongWall(rearWallDist_inches, Localization.getRightCommand(currentSpeed));
+            strafeAlongWall(rearWallDist_inches, Localization.findRightCommand(currentSpeed));
 
         } while( opModeIsActive() && timesNotUp() && Math.abs(distance - leftWallDist_inches) > Calibration.AUTON_DIST_THRESHOLD );
     }
@@ -740,8 +740,8 @@ public class Auton_Basic extends LinearOpMode {
             // Turn speed and heading into forward/rotate:
             double headingToGo = localization.directionTo(xInches, yInches);
             localization.convertSpeedDirection(currentSpeed, headingToGo);
-            double forward = Localization.getForwardCommand(localization.newForward);
-            double right = Localization.getRightCommand(localization.newRight);
+            double forward = Localization.findForwardCommand(localization.newForward);
+            double right = Localization.findRightCommand(localization.newRight);
 
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
@@ -792,8 +792,8 @@ public class Auton_Basic extends LinearOpMode {
 
             // Turn speed and heading into forward/rotate:
             localization.convertSpeedDirection(currentSpeed, headingToGo);
-            double forward = Localization.getForwardCommand(localization.newForward);
-            double right = Localization.getRightCommand(localization.newRight);
+            double forward = Localization.findForwardCommand(localization.newForward);
+            double right = Localization.findRightCommand(localization.newRight);
 
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
@@ -886,7 +886,7 @@ public class Auton_Basic extends LinearOpMode {
             currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
 
             // Convert from deg/sec to motor power:
-            double rotate = Localization.getRotateCommand(Math.toRadians(currentDegPerSec));
+            double rotate = Localization.findRotateCommand(Math.toRadians(currentDegPerSec));
 
             // Apply control loop to keep position constant:
             double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
@@ -937,7 +937,7 @@ public class Auton_Basic extends LinearOpMode {
             currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
 
             // Convert from deg/sec to motor power:
-            double rotate = Localization.getRotateCommand(Math.toRadians(currentDegPerSec));
+            double rotate = Localization.findRotateCommand(Math.toRadians(currentDegPerSec));
 
             // Apply control loop to keep position constant:
             double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
