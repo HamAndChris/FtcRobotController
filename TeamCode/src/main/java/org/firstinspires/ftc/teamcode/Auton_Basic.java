@@ -325,7 +325,7 @@ public class Auton_Basic extends LinearOpMode {
         double currentAngle = localization.getClockwiseAngle();
         // Apply basic rotation control loop:
         double rotate = (targetAngle - currentAngle) * Calibration.AUTON_ANGLE_GAIN_P;
-        rotate = Math.max(Math.min(rotate, Calibration.AUTON_ROTATE_MOTOR_SPEED), -Calibration.AUTON_ROTATE_MOTOR_SPEED); // Limit max command
+        rotate = Math.max(Math.min(rotate, Calibration.AUTON_ROTATE_SPEED), -Calibration.AUTON_ROTATE_SPEED); // Limit max command
         drive(forward, right, rotate);
 
         // Return true if the angle is within 2 degrees for 0.25 seconds:
@@ -746,7 +746,7 @@ public class Auton_Basic extends LinearOpMode {
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
             double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
-            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_MOTOR_SPEED, dt);
+            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ROTATE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
 
             drive(forward, right, rotateP);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
@@ -798,7 +798,7 @@ public class Auton_Basic extends LinearOpMode {
             // Keep rotation on target:
             degreesToGo = localization.diffFromHeadingDeg(headingDeg);
             double rotateP = -degreesToGo * Calibration.AUTON_ANGLE_GAIN_P;
-            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_MOTOR_SPEED, dt);
+            currentRotateP = applyLimitsOneSided(rotateP, currentRotateP, Calibration.AUTON_ROTATE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
 
             drive(forward, right, currentRotateP);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
@@ -859,8 +859,9 @@ public class Auton_Basic extends LinearOpMode {
         double currentDegPerSec = 0;
         double now = runtime.seconds();
         double lastTime = now;
-        double lastMisalignedTime = now;
         double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+        double rotSpeed_degPerSec = Localization.calculateRotationDegPerSec(Calibration.AUTON_ROTATE_SPEED);
+        double rotAccel_degPerSec2 = Localization.calculateRotationDegPerSec(Calibration.AUTON_ROTATE_ACCEL);
         String label = String.format("autoRotateTo(%.1f)", newHeadingDeg);
 
         while( opModeIsActive() && timesNotUp() && Math.abs(degreesToGoCCW) > Calibration.AUTON_ANGLE_THRESH ){
@@ -874,16 +875,11 @@ public class Auton_Basic extends LinearOpMode {
             // Calculate new distance and heading to target:
             degreesToGoCCW = localization.diffFromHeadingDeg(newHeadingDeg);
 
-            // Determine whether we're in the settling window:
-            if( Math.abs(degreesToGoCCW) > Calibration.AUTON_ANGLE_THRESH ){
-                lastMisalignedTime = now;
-            }
-
             // Calculate max speed command for smooth _deceleration_ from this distance using kinematics equation:
-            double degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) ) * Math.signum(degreesToGoCCW) ;
+            double degPerSec = Math.sqrt( 2 * rotAccel_degPerSec2 * Math.abs(degreesToGoCCW) ) * Math.signum(degreesToGoCCW) ;
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
+            currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, rotAccel_degPerSec2, rotSpeed_degPerSec, dt);
 
             // Convert from deg/sec to motor power:
             double rotate = Localization.findRotateCommand(Math.toRadians(currentDegPerSec));
@@ -912,8 +908,10 @@ public class Auton_Basic extends LinearOpMode {
         double currentDegPerSec = 0;
         double now = runtime.seconds();
         double lastTime = now;
-        double degreesToGoCCW = -localization.diffFromHeadingDeg(newHeadingDeg);
+        double degreesToGoCCW;
         boolean decelerating = false;
+        double rotSpeed_degPerSec = Localization.calculateRotationDegPerSec(Calibration.AUTON_ROTATE_SPEED);
+        double rotAccel_degPerSec2 = Localization.calculateRotationDegPerSec(Calibration.AUTON_ROTATE_ACCEL);
         String label = String.format("autoRotateToAbout(%.1f)", newHeadingDeg);
 
         while( opModeIsActive() && timesNotUp()
@@ -929,24 +927,20 @@ public class Auton_Basic extends LinearOpMode {
             degreesToGoCCW = localization.diffFromHeadingDeg(newHeadingDeg);
 
             // Decide whether we're in the deceleration zone using kinematics equation:
-            double decelSpeed_degPerSec = Math.sqrt( 2 * Calibration.AUTON_ANGLE_ACCEL * Math.abs(degreesToGoCCW) );
+            double decelSpeed_degPerSec = Math.sqrt( 2 * rotAccel_degPerSec2 * Math.abs(degreesToGoCCW) );
             decelerating = decelerating || Math.abs(localization.getOmegaDeg()) >= decelSpeed_degPerSec;
-            double degPerSec = decelerating ? 0 : Calibration.AUTON_ROTATE_SPEED;
+            double degPerSec = decelerating ? 0 : rotSpeed_degPerSec * Math.signum(degreesToGoCCW);
 
             // Use rate limiter to apply smooth _acceleration_ and cap to desired travel speed
-            currentDegPerSec = applyLimitsOneSided(degPerSec, currentDegPerSec, Calibration.AUTON_ANGLE_ACCEL, Calibration.AUTON_ROTATE_SPEED, dt);
+            currentDegPerSec = applyLimitsSymmetrical(degPerSec, currentDegPerSec, rotAccel_degPerSec2, rotSpeed_degPerSec, dt);
 
             // Convert from deg/sec to motor power:
             double rotate = Localization.findRotateCommand(Math.toRadians(currentDegPerSec));
 
-            // Apply control loop to keep position constant:
-            double pX = (originalX - localization.getX()) * Calibration.AUTON_POSITION_GAIN_P;
-            double pY = (originalY - localization.getY()) * Calibration.AUTON_POSITION_GAIN_P;
-            localization.convertFieldRelative(pY, pX, rotate);
-
-            drive(localization.newForward, localization.newRight, rotate);
+            // Just ignore position drift:
+            drive(0, 0, rotate);
             telemetry.addData("Forward/Right/Rotate", "%.2f / %.2f / %.2f",
-                    localization.newForward, localization.newRight, rotate);
+                    0, 0, rotate);
         }
         drive(0,0,0);
     }

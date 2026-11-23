@@ -51,15 +51,15 @@ public final class Calibration {
     // Autonomous motion profiling calibrations:
 
     /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
-    public static final double AUTON_STRAFE_SPEED = 0.8;
-    /** MotorSpeed: Default translation speed for autoSlideTo() operations */
-    public static final double AUTON_SLIDE_SPEED = 0.8;
-    /** Deg/sec: Default rotational speed for operations */
-    public static final double AUTON_ROTATE_SPEED = 135;
-    /** MotorSpeed: Translated from angle speed */
-    public static final double AUTON_ROTATE_MOTOR_SPEED = 0.5;
+    public static final double AUTON_STRAFE_SPEED   = 0.8;
+    /** MotorSpeed: Translation speed for autoSlideTo() operations */
+    public static final double AUTON_SLIDE_SPEED    = 0.8;
+    /** MotorSpeed: Rotational speed for operations */
+    public static final double AUTON_ROTATE_SPEED   = 0.5;
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
     public static final double AUTON_ACCEL          = 0.8;
+    /** MotorSpeed/sec: How quickly to ramp up/down rotational movements */
+    public static final double AUTON_ROTATE_ACCEL   = 0.8;
     /** Inches: Distance for translational movements to be considered "at target" */
     public static final double AUTON_DIST_THRESHOLD = 2.0;
     /** InchesPerSec: Speed for translational movements to be considered "stopped" */
@@ -68,8 +68,6 @@ public final class Calibration {
     public static final double AUTON_STOPPED_ROTATING_THRESHOLD = 10;
     /** Deg: IMU angle alignment "done" angle threshold */
     public static final double AUTON_ANGLE_THRESH   = 4.0;
-    /** Deg/sec/sec: How quickly to ramp up/down rotational movements */
-    public static final double AUTON_ANGLE_ACCEL    = 180;
     /** Sec: IMU angle alignment "done" time threshold */
     public static final double AUTON_ANGLE_SETTLING = 0.25;
     /** MotorSpeed/Deg: IMU angle alignment proportional gain */

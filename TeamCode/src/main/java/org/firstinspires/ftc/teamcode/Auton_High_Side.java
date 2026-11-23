@@ -84,7 +84,7 @@ public class Auton_High_Side extends Auton_Basic {
         // Step 4: Rotate 90 degrees to the right, so dual distance sensors face the left wall
         while( opModeIsActive() && timesNotUp() && localization.getClockwiseAngle() < 90 ){
             beginLoop("Step 4 (Turn Right)");
-            drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_MOTOR_SPEED); // Rotate right while still strafing left
+            drive(0, -Calibration.AUTON_STRAFE_SPEED/2, Calibration.AUTON_ROTATE_SPEED); // Rotate right while still strafing left
         }
 
 //        // Step 5: Strafe along driver wall until we're 1 meter from the left wall'

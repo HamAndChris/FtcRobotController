@@ -8,9 +8,8 @@ public class CalibrationTest {
     @Test public void testCalibrations(){
         // Check for values that are the incorrect sign:
         assertTrue(Calibration.AUTON_ACCEL > 0.01);
-        assertTrue(Calibration.AUTON_ANGLE_ACCEL > 10);
-        assertTrue(Calibration.AUTON_ANGLE_ACCEL > 10);
-        assertTrue(Calibration.AUTON_ROTATE_MOTOR_SPEED > 0.05);
+        assertTrue(Calibration.AUTON_ROTATE_ACCEL > 0.1);
+        assertTrue(Calibration.AUTON_ROTATE_SPEED > 0.05);
         assertTrue(Calibration.AUTON_SLIDE_SPEED > 0.05);
         assertTrue(Calibration.AUTON_STRAFE_SPEED > 0.05);
         assertTrue(Calibration.AUTON_ANGLE_SETTLING >= 0);
@@ -27,7 +26,7 @@ public class CalibrationTest {
 
         // Check for values that wouldn't make sense at all:
         assertTrue(Math.abs(Calibration.APRIL_TARGET_BEARING) < 20);
-        assertTrue(Math.abs(Calibration.AUTON_ROTATE_MOTOR_SPEED) <= 1.0); // This one actually tests a function output
+        assertTrue(Math.abs(Calibration.AUTON_ROTATE_SPEED) <= 1.0); // This one actually tests a function output
         assertTrue(Math.abs(Calibration.AUTON_SLIDE_SPEED) <= 1.0);
         assertTrue(Math.abs(Calibration.TELEOP_POWER_LEVEL) <= 1.0);
         assertTrue(Calibration.AUTON_ANGLE_THRESH > 0.1);
