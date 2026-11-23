@@ -19,12 +19,20 @@ public class AprilTagSensingTest {
                 xNegQuat,
                 getIntoTheDeepTagLibrary().lookupTag(12).fieldOrientation);
 
-        // Rotating this "flipped up" tag towards the left wall then requires rotating 90 degrees in Z.
+        // Rotating this "flipped up" tag to the left wall then requires rotating 90 degrees in Z.
         // When multiplying quaternions, the left-hand one is applied in the *global reference frame*.
         // The IntoTheDeep Red Audience Wall tag should match this orientation.
         Quaternion zQuat = CustomAprilTagGameDatabase.zRotationQuat(90);
         compareQuats("Zrot * -Xrot should match RedAudienceWall",
                 zQuat.multiply(xNegQuat, 0),
+                getIntoTheDeepTagLibrary().lookupTag(16).fieldOrientation);
+
+        // Another way to get the red audience wall would be rotating it along Z first, then Y.
+        // HOWEVER, since the tag is facing DOWN, the initial Z axis is inverted. So it'll be a negative Z.
+        Quaternion zNegQuat = CustomAprilTagGameDatabase.zRotationQuat(-90);
+        Quaternion yNegQuat = CustomAprilTagGameDatabase.yRotationQuat(90);
+        compareQuats("-Yrot * -Zrot should match RedAudienceWall",
+                yNegQuat.multiply(zNegQuat, 0),
                 getIntoTheDeepTagLibrary().lookupTag(16).fieldOrientation);
     }
 
