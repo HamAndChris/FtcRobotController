@@ -44,7 +44,7 @@ public class AprilSensing {
         // +90 degrees if it’s pointing straight left, -90 degrees for straight right, etc.
         // You can also set the roll to +/-90 degrees if it’s vertical, or 180 degrees if it’s upside-down.
         YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES,
-                0, -90 + Calibration.APRIL_CAMERA_ELEVATION, 0, 0);
+                0, - Calibration.APRIL_CAMERA_INCLINE, 0, 0);
 
         // Initialize camera:
         //aprilTag = AprilTagProcessor.easyCreateWithDefaults();
@@ -107,7 +107,7 @@ public class AprilSensing {
                 Position pos = detection.robotPose.getPosition();
                 YawPitchRollAngles orx = detection.robotPose.getOrientation();
                 telemetry.addData("Robot","XYZ %6.1f %6.1f %6.1f RPY %6.1f %6.1f %6.1f",
-                        pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw());
+                        pos.x, pos.y, pos.z, orx.getRoll(), orx.getPitch(), orx.getYaw() + 90); // Reported reference frame is rotated 90 for some reason
                 // Debugging: also print hive field position
                 //telemetry.addData("Hive Pos","XYZ %s", clusterDet.metadata.fieldPosition);
                 //telemetry.addData("Hive Quat","%s", clusterDet.metadata.fieldOrientation);
@@ -145,7 +145,7 @@ public class AprilSensing {
 
                         // If the robot pose is also a good reading, go ahead and update localization!
                         if( robotPoseValid(clusterDet) ){
-                            localization.setPose(pos.x, pos.y, orx.getYaw());
+                            localization.setPose(pos.x, pos.y, orx.getYaw() + 90); // Reported reference frame is rotated 90 for some reason
                             telemetry.addLine("Location Updated!");
                         }
                     }
@@ -157,10 +157,6 @@ public class AprilSensing {
         telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
         telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
         telemetry.addLine("RBE = Range, Bearing & Elevation");
-        telemetry.addLine("Robot = Field relative position and orientation");
-        telemetry.addLine("Hive = Reported field position of hive");
-
-        telemetry.update();
     }   // end method telemetryAprilTag()
 
     /** Determine whether it is safe to use this April tag cluster to update field position */
@@ -176,13 +172,14 @@ public class AprilSensing {
 
     /** Calculate the height of the detection based on trigonometry */
     private double clusterHeight(AprilTagClusterDetection cluster){
-        double elevation = Math.toRadians(cluster.ftcPose.elevation + Calibration.APRIL_CAMERA_ELEVATION);
+        double elevation = Math.toRadians(cluster.ftcPose.elevation + 90 - Calibration.APRIL_CAMERA_INCLINE);
         return Math.sin(elevation) * cluster.ftcPose.range;
     }
 
     /** Determine whether the detected hive is in the "up" position */
     private boolean hiveIsTippedUp(AprilTagClusterDetection cluster){
         return Math.abs(cluster.ftcPose.roll) < 90  // Not reading hive from wrong side
-                && cluster.ftcPose.pitch < 20;      // Tipped sufficiently upward // TODO: Find a better way to calculate this
+//                && cluster.ftcPose.pitch < 20;      // Tipped sufficiently upward // TODO: Find a better way to calculate this
+            && clusterHeight(cluster) >= Calibration.APRIL_HIVE_MIN_HEIGHT;
     }
 }

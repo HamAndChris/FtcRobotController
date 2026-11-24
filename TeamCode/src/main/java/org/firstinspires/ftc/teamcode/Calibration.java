@@ -8,29 +8,27 @@ package org.firstinspires.ftc.teamcode;
  * Note: If you change these and it fails to compile, it's because the ranges are being checked by a unit test
  *       which is located at TeamCode/src/test/java/org/firstinspires/ftc/teamcode/CalibrationTest.java
  */
-public final class Calibration {
-    // Prevent instantiation
-    private Calibration() {}
+public final class Calibration
+{
+    //=============================== Hardware Change Switches ===================================//
+    public static final boolean DISABLE_I2C_DISTANCE_SENSORS = true;
+    public static final boolean SINGLE_GAMEPAD_MODE          = false;
+    public static final boolean USE_FIELD_RELATIVE           = false;
 
-    // Frequently used values:
-    public static final boolean SINGLE_GAMEPAD_MODE = false;
-    public static final boolean USE_FIELD_RELATIVE  = false;
+    //============================= Frequently Used Calibrations =================================//
     public static final double  TELEOP_POWER_LEVEL  = 1.0; // 1.0 = full speed
     public static final int     FLOWER_DRAIN_CYCLES = 3; // Number of times to move forward and back while draining flowers
 
-    // Hardware changes:
-    public static final boolean DISABLE_I2C_DISTANCE_SENSORS = true;
-
-    // APRIL tag aim-bot calibrations:
+    //============================ April Tag Aimbot Calibrations =================================//
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
     public static final double APRIL_DIST_GAIN_P = 0.1;
-    public static final double APRIL_TARGET_BEARING = 0.0;  // Adjust this to make robot aim to the left/right (higher = more left)
-    public static final double APRIL_YAW_GAIN_P = 0.05; // was 0.1 when we were using yaw instead of bearing
-    public static final double APRIL_CAMERA_ELEVATION = 38; // Degrees: How far above horizontal camera is aimed
-    public static final double APRIL_CAMERA_HEIGHT = 12.125; // Inches: Height of camera lens above ground
-    public static final double APRIL_HIVE_UP_MIN_HEIGHT = 30; // Inches: How high a hive cluster is before we consider it tipped up
+    public static final double APRIL_TARGET_BEARING = 0.0;    // Adjust this to make robot aim to the left/right (higher = more left)
+    public static final double APRIL_YAW_GAIN_P = 0.05;       // was 0.1 when we were using yaw instead of bearing
+    public static final double APRIL_CAMERA_INCLINE = 38;     // Degrees: How far below vertical camera is aimed (inclinometer on face of camera body)
+    public static final double APRIL_CAMERA_HEIGHT = 12.125;  // Inches: Height of camera lens above ground
+    public static final double APRIL_HIVE_MIN_HEIGHT = 50;    // Inches: How high the hive opening center must be to consider it "tipped up"
 
-    // Autonomous behavior calibrations:
+    //========================== Autonomous Behavior Calibrations ================================//
     /** Seconds: Stop all movement after this amount of time to avoid penalties */
     public static final double AUTON_TIME_LIMIT   = 30;
     /** Inches: How far to come off wall before beginning to look for APRIL tags */
