@@ -27,13 +27,18 @@ public class AprilTagSensingTest {
                 zQuat.multiply(xNegQuat, 0),
                 getIntoTheDeepTagLibrary().lookupTag(16).fieldOrientation);
 
-        // Another way to get the red audience wall would be rotating it along Z first, then Y.
-        // HOWEVER, since the tag is facing DOWN, the initial Z axis is inverted. So it'll be a negative Z.
-        Quaternion zNegQuat = CustomAprilTagGameDatabase.zRotationQuat(-90);
-        Quaternion yNegQuat = CustomAprilTagGameDatabase.yRotationQuat(90);
-        compareQuats("-Yrot * -Zrot should match RedAudienceWall",
-                yNegQuat.multiply(zNegQuat, 0),
+        // Another way to get the red audience wall would be rotating it along Z first, then negative Y.
+        Quaternion yNegQuat = CustomAprilTagGameDatabase.yRotationQuat(-90);
+        compareQuats("-Yrot * Zrot should match RedAudienceWall",
+                yNegQuat.multiply(zQuat, 0),
                 getIntoTheDeepTagLibrary().lookupTag(16).fieldOrientation);
+
+        // Sanity check for the red rear wall - should be negative Z first, then positive Y
+        Quaternion yQuat = CustomAprilTagGameDatabase.yRotationQuat(90);
+        Quaternion zNegQuat = CustomAprilTagGameDatabase.zRotationQuat(-90);
+        compareQuats("Yrot * -Zrot should match RedRearWall",
+                yQuat.multiply(zNegQuat, 0),
+                getIntoTheDeepTagLibrary().lookupTag(14).fieldOrientation);
     }
 
     public static void compareQuats(String testName, Quaternion result, Quaternion desired){
