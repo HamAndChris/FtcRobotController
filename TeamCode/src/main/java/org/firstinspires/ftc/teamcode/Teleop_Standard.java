@@ -58,9 +58,9 @@ import java.util.List;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  *
  */
-@TeleOp(name = "Teleop: Either Team", group = "Robot")
+@TeleOp(name = "Teleop: Standard", group = "Robot")
 //@Disabled
-public class Teleop_BothTeams extends OpMode {
+public class Teleop_Standard extends OpMode {
     // Hardware objects declared here:
     DcMotor frontLeftDrive;
     DcMotor frontRightDrive;
@@ -83,9 +83,6 @@ public class Teleop_BothTeams extends OpMode {
     private enum CatapultState { IDLE, WINDING, DOWN, LAUNCHING }
     private CatapultState catapultState = CatapultState.WINDING;
     private int winchLaunchStart;
-
-    // PID variables:
-    private double angle_integrator = 0;
 
     // FPS profiling:
     private final Deque<Double> timestamps = new ArrayDeque<>();
@@ -110,11 +107,6 @@ public class Teleop_BothTeams extends OpMode {
     double LEDColor;
     private double lastLaunchCommand = 0;  // Timestamp used for waitingForLaunch()
     private boolean lastRightStickButton = false;
-
-    private void setIntakeMotors(double speed){
-        intakeMotor1.setPower(speed);
-        intakeMotor2.setPower(speed);
-    }
 
     public double teamLEDColor(){
         return (teamColor().contains("BLUE")) ? Calibration.LED_BLUE : Calibration.LED_RED;
@@ -336,7 +328,6 @@ public class Teleop_BothTeams extends OpMode {
         if( operatorGamepad.dpad_down ){
             flowerBarDown();
         }
-        telemetry.addData("Flower Bar", "%.2f", flowerBarPosition);
 
         // Send LED value:
         setPositionCached(ledIndicator, LEDColor);
@@ -355,6 +346,12 @@ public class Teleop_BothTeams extends OpMode {
     /** Helper function to set Flower Bar to up position */
     void flowerBarUp(){
         setPositionCached(flowerBar, Calibration.FLOWER_BAR_UP);
+    }
+
+    /** Helper to set both intake motors to a specific speed */
+    private void setIntakeMotors(double speed){
+        setPowerCached(intakeMotor1, speed);
+        setPowerCached(intakeMotor2, speed);
     }
 
     /** Helper function to set intake motors on */

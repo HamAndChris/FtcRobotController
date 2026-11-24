@@ -31,6 +31,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.eventloop.opmode.Utility;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -48,65 +49,54 @@ import com.qualcomm.robotcore.hardware.IMU;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  *
  */
-@TeleOp(name = "Winch motor only`", group = "Robot")
+@Utility(name = "Winch motor only")
 //@Disabled
-public class WinchOnly extends OpMode {
+public class Utility_WinchOnly extends OpMode {
     // This declares the four motors needed
     DcMotor winchMotor;
-
-    // Sensor scale: 3.3V corresponds to 1000 mm
-    private static final double MAX_VOLTS = 3.3;
-    private static final double MAX_DISTANCE_MM = 1000.0;
-    private static final double LASER_DISTANCE_WIDTH_MM = 9 * 25.4; // TODO: Measure more precisely
-
-    // This declares the IMU needed to get the current direction the robot is facing
-    IMU imu;
 
     @Override
     public void init() {
         winchMotor = hardwareMap.get(DcMotor.class, "WinchMotor");
-
-        // We set the left motors in reverse which is needed for drive trains where the left
-        // motors are opposite to the right ones.
-
-        // This needs to be changed to match the orientation on your robot
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
-        RevHubOrientationOnRobot.UsbFacingDirection usbDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
-
-        RevHubOrientationOnRobot orientationOnRobot = new
-                RevHubOrientationOnRobot(logoDirection, usbDirection);
-
-        telemetry.addLine("Press A drive winch, B to reverse");
+        winchMotor.setDirection(DcMotor.Direction.REVERSE);
         telemetry.update();
     }
 
     @Override
     public void loop() {
+        telemetry.addLine("Press A or Right Trigger: Drive winch");
+        telemetry.addLine("Press B or Left Trigger:  Reverse winch");
+        telemetry.addLine("Press X:                  Reset encoder");
+        telemetry.addLine();
 
-        // If you press the A button, then you reset the Yaw to be zero from the way
-        // the robot is currently pointing
-        if( gamepad1.left_trigger > 0.1 ) {
-            winchMotor.setDirection(DcMotor.Direction.FORWARD);
-            winchMotor.setPower(gamepad1.left_trigger);
+        // Reset encoder if X is pressed:
+        if( gamepad1.xWasPressed() ){
+            winchMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            winchMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
-        if( gamepad1.right_trigger > 0.1 ) {
-            winchMotor.setDirection(DcMotor.Direction.REVERSE);
-            winchMotor.setPower(gamepad1.right_trigger);
+
+        // Choose power level:
+        double power;
+        if( gamepad1.left_trigger > 0.1 ) {
+            power = -gamepad1.left_trigger;
+        }
+        else if( gamepad1.right_trigger > 0.1 ) {
+            power = gamepad1.right_trigger;
         }
         else if (gamepad1.a) {
-            winchMotor.setDirection(DcMotor.Direction.REVERSE);
-            winchMotor.setPower(1.0);
-        } else if (gamepad1.b) {
-            winchMotor.setDirection(DcMotor.Direction.FORWARD);
-            winchMotor.setPower(1.0);
-        } else {
-            winchMotor.setPower(0);
+            power = 1.0;
         }
-        telemetry.addLine(String.format("Encoder: %d", winchMotor.getCurrentPosition()));
-        telemetry.update();
+        else if (gamepad1.b) {
+            power = -1.0;
+        }
+        else {
+            power = 0;
+        }
+        winchMotor.setPower(power);
 
+        telemetry.addData("Power", "%.1f", power);
+        telemetry.addData("Encoder", "%d", winchMotor.getCurrentPosition());
+        telemetry.update();
     }
 
 }
