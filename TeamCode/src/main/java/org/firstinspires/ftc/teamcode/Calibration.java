@@ -48,12 +48,14 @@ public final class Calibration
 
     // Autonomous motion profiling calibrations:
 
-    /** MotorSpeed: Default wall-strafing speed for strafeAlongWall() operations */
+    /** MotorSpeed: Wall-strafing speed for strafeAlongWall() operations */
     public static final double AUTON_STRAFE_SPEED   = 0.8;
     /** MotorSpeed: Translation speed for autoSlideTo() operations */
     public static final double AUTON_SLIDE_SPEED    = 0.8;
     /** MotorSpeed: Rotational speed for operations */
     public static final double AUTON_ROTATE_SPEED   = 0.5;
+    /** MotorSpeed: Translational speed for slower movements like autoAlignAndFire */
+    public static final double AUTON_WALK_SPEED    = 0.3;
     /** MotorSpeed/sec: How quickly to ramp up/down translational movements */
     public static final double AUTON_ACCEL          = 0.8;
     /** MotorSpeed/sec: How quickly to ramp up/down rotational movements */

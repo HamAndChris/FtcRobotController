@@ -411,7 +411,12 @@ public class Auton_Basic extends LinearOpMode {
 
     // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
     void AlineToAprilTag() {
-        aprilSensing.performSensing(0, 0, 0);
+        AlineToAprilTag(0, 0, 0);
+    }
+
+    // Use the AprilSensing class to detect and choose alignment commands, then apply them along with the LED color:
+    void AlineToAprilTag(double forward, double right, double rotate) {
+        aprilSensing.performSensing(forward, right, rotate);
         drive(  aprilSensing.Forward,
                 aprilSensing.Right,
                 aprilSensing.Rotate);
@@ -1001,10 +1006,35 @@ public class Auton_Basic extends LinearOpMode {
 
     /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
     public boolean autoAlignAndFire(double abortTime){
+        return autoAlignAndFire(abortTime, 0);
+    }
+
+    /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
+    public boolean autoAlignAndFireFromWall(double abortTime){
+        return autoAlignAndFire(abortTime, Calibration.AUTON_DIST_STEP1);
+    }
+
+    /** Attempt to align to APRIL tag and fire the catapult. Returns true if fire happens before abort time. */
+    public boolean autoAlignAndFire(double abortTime, double forwardWalk){
         boolean fired = false;
+        String label = String.format("autoAlignAndFire(%.0f, %.0f)", abortTime, forwardWalk);
+        double currentForward = 0;
+        double lastTime = runtime.seconds();
+
         while( opModeIsActive() && timesNotUp() && runtime.seconds() < abortTime ) {
-            beginLoop("autoAlignAndFire");
-            AlineToAprilTag();
+            beginLoop(label);
+            // Calculate timestep:
+            double now = runtime.seconds();
+            double dt = now - lastTime;
+            lastTime = now;
+
+            // Drive forward the desired amount while we wait for alignment to occur
+            boolean walking = (forwardWalk > 0) && (distances.WallDist_inches < forwardWalk);
+            double forwardDesired = walking ? Calibration.AUTON_WALK_SPEED : 0;
+            currentForward = applyLimitsSymmetrical(forwardDesired, currentForward, Calibration.AUTON_ACCEL, Calibration.AUTON_WALK_SPEED, dt);
+
+            // The AprilSensing logic will override forward when it finds the tag.
+            AlineToAprilTag(forwardDesired, 0, 0);
             if( aprilSensing.OnTarget ){
                 // Successfully aligned to april tag. Fire away!
                 launchCatapult();

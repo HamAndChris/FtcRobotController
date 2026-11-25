@@ -61,11 +61,8 @@ public class Auton_HighSide_2 extends Auton_Basic {
         // Set starting position:
         localization.setPose(STARTING_X, STARTING_Y, STARTING_HEADING);
 
-        // Step 1 move forward a few inches
-        autoSlideToAbout(STARTING_X - Calibration.AUTON_DIST_STEP1, STARTING_Y, STARTING_HEADING);
-
-        // step 2 line up to April Tag and fire
-        autoAlignAndFire(15);
+        // Step 1 line up and fire while also moving forward a few inches
+        autoAlignAndFireFromWall(15);
 
         // rotate to face rear wall, then slide over to flower
         autoSlideToRightFlower();
