@@ -148,6 +148,7 @@ public class Teleop_Standard extends OpMode {
         intakeMotor1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         intakeMotor2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         winchMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        winchMotor.setPower(0);
 
         // Initialize the distance sensing algorithm:
         distances = new Distances(hardwareMap, telemetry);
@@ -192,8 +193,8 @@ public class Teleop_Standard extends OpMode {
         distances.update();
         localization.update();
 
-        // Keep the winch wound when the user initialized the robot
-        doWinchStatemachine(false);
+        // Keep the winch wound when the user initialized the robot. Actually don't, that can be a penalty.
+        //doWinchStatemachine();
 
         // Allow user to set alliance team, or use previously set value
         telemetry.addLine();
@@ -305,7 +306,7 @@ public class Teleop_Standard extends OpMode {
 
         /* ************* Winch State Machine *********** */
 
-        doWinchStatemachine(true);
+        doWinchStatemachine();
 
         /* ************* Intake Motor Logic *********** */
 
@@ -400,7 +401,7 @@ public class Teleop_Standard extends OpMode {
         telemetry.addData(label, "%.2f s, %.1f FPS", now, fps);
     }
 
-    private void doWinchStatemachine(boolean allowLaunch) {
+    private void doWinchStatemachine() {
         // Idle state:
         if( catapultState == CatapultState.IDLE ){
             // Turn motor off
@@ -436,7 +437,7 @@ public class Teleop_Standard extends OpMode {
             setPowerCached(winchMotor, winchPower);
 
             // Check conditions
-            if( operatorGamepad.x && allowLaunch ){
+            if( operatorGamepad.x ){
                 catapultState = CatapultState.LAUNCHING;
                 lastLaunchCommand = time;
             }
