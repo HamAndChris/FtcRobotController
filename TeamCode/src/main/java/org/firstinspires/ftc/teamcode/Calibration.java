@@ -21,12 +21,16 @@ public final class Calibration
 
     //============================ April Tag Aimbot Calibrations =================================//
     public static final double APRIL_TARGET_DISTANCE = 54; // Adjust this to make the robot aim closer/farther from the hive
-    public static final double APRIL_DIST_GAIN_P = 0.1;
-    public static final double APRIL_TARGET_BEARING = 0.0;    // Adjust this to make robot aim to the left/right (higher = more left)
-    public static final double APRIL_YAW_GAIN_P = 0.05;       // was 0.1 when we were using yaw instead of bearing
-    public static final double APRIL_CAMERA_INCLINE = 38;     // Degrees: How far below vertical camera is aimed (inclinometer on face of camera body)
-    public static final double APRIL_CAMERA_HEIGHT = 12.125;  // Inches: Height of camera lens above ground
-    public static final double APRIL_HIVE_MIN_HEIGHT = 50;    // Inches: How high the hive opening center must be to consider it "tipped up"
+    public static final double APRIL_TARGET_BEARING  = 0.0;    // Adjust this to make robot aim to the left/right (higher = more left)
+    public static final double APRIL_TARGET_YAW      = 0.0;    // Adjust this to offset robot position relative to hive (higher = more left)
+    public static final double APRIL_DIST_GAIN_P     = 0.1;    // MotorSpeed/Inch: Forward control loop
+    public static final double APRIL_YAW_GAIN_P      = 0.05;   // MotorSpeed/Deg: Strafing control loop
+    public static final double APRIL_BEARING_GAIN_P  = 0.05;   // MotorSpeed/Deg: Rotation control loop
+    public static final double APRIL_CAMERA_INCLINE  = 38;     // Degrees: How far below vertical camera is aimed (inclinometer on face of camera body)
+    public static final double APRIL_CAMERA_HEIGHT   = 12.125;// Inches: Height of camera lens above ground
+    public static final double APRIL_CAMERA_POS_Y    = 8.5;   // Inches: Y distance (fwd/back) from robot center to camera lens
+    public static final double APRIL_CAMERA_POS_X    = 3.9;   // Inches: X distance (right/left) from robot center to camera lens
+    public static final double APRIL_HIVE_MIN_HEIGHT = 53;    // Inches: How high the hive opening center must be to consider it "tipped up"
 
     //========================== Autonomous Behavior Calibrations ================================//
     /** Seconds: Stop all movement after this amount of time to avoid penalties */

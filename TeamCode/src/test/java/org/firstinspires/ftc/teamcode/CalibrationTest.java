@@ -19,7 +19,7 @@ public class CalibrationTest {
         assertTrue(Calibration.AUTON_POSITION_GAIN_P >= 0);
         assertTrue(Calibration.AUTON_ANGLE_GAIN_P >= 0);
         assertTrue(Calibration.APRIL_DIST_GAIN_P >= 0);
-        assertTrue(Calibration.APRIL_YAW_GAIN_P >= 0);
+        assertTrue(Calibration.APRIL_BEARING_GAIN_P >= 0);
         assertTrue(Calibration.LASER_ANGLE_GAIN_P >= 0);
         assertTrue(Calibration.LASER_DIST_GAIN_P >= 0);
         assertTrue(Calibration.WINCH_HOLDING_GAIN_P >= 0);

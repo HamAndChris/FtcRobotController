@@ -36,7 +36,7 @@ public class AprilSensing {
 
         // Origin location: Center of the robot at field height
         // Axes orientation: +x right, +y forward, +z upward
-        Position cameraPosition = new Position(DistanceUnit.INCH, 3.9, 8.5, Calibration.APRIL_CAMERA_HEIGHT, 0);
+        Position cameraPosition = new Position(DistanceUnit.INCH, Calibration.APRIL_CAMERA_POS_X, Calibration.APRIL_CAMERA_POS_Y, Calibration.APRIL_CAMERA_HEIGHT, 0);
 
         // If all values are zero (no rotation), that implies the camera is pointing straight up.
         // In most cases, you’ll need to set the pitch to -90 degrees (rotation about the x-axis),
@@ -49,44 +49,68 @@ public class AprilSensing {
         // Initialize camera:
         //aprilTag = AprilTagProcessor.easyCreateWithDefaults();
 
-        // Create the AprilTag processor.
-        aprilTag = new AprilTagProcessor.Builder()
-                // The following default settings are available to un-comment and edit as needed.
-                //.setDrawAxes(true) // Changed in V12.0
-                //.setDrawTagOutline(true)
-                //.setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
-                //.setTagLibrary(AprilTagGameDatabase.getCenterStageTagLibrary())
-                //.setOutputUnits(DistanceUnit.INCH, AngleUnit.DEGREES)
-                //.setDrawCubeProjection(false)
 
-                // == CAMERA CALIBRATION ==
-                // If you do not manually specify calibration parameters, the SDK will attempt
-                // to load a predefined calibration for your camera.
-                .setLensIntrinsics(908.758f, 908.758f, 696.345f, 376.979f) // Should be able to comment this out if the XML file worked
-                // ... these parameters are fx, fy, cx, cy
+        // Allow instantiation with no hardware for unit testing
+        if( hardwareMap == null ) {
+            aprilTag = null;
+            visionPortal = null;
+        } else {
+            // Create the AprilTag processor.
+            aprilTag = new AprilTagProcessor.Builder()
+                    // The following default settings are available to un-comment and edit as needed.
+                    //.setDrawAxes(true) // Changed in V12.0
+                    //.setDrawTagOutline(true)
+                    //.setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
+                    //.setTagLibrary(AprilTagGameDatabase.getCenterStageTagLibrary())
+                    //.setOutputUnits(DistanceUnit.INCH, AngleUnit.DEGREES)
+                    //.setDrawCubeProjection(false)
 
-                // Set the camera location so we can use robotPose:
-                .setCameraPose(cameraPosition, cameraOrientation)
+                    // == CAMERA CALIBRATION ==
+                    // If you do not manually specify calibration parameters, the SDK will attempt
+                    // to load a predefined calibration for your camera.
+                    .setLensIntrinsics(908.758f, 908.758f, 696.345f, 376.979f) // Should be able to comment this out if the XML file worked
+                    // ... these parameters are fx, fy, cx, cy
 
-                // Apply the custom field locations and orientations we determined with LINEAR ALGEBRA:
-                .setTagLibrary(CustomAprilTagGameDatabase.getCurrentGameTagLibrary())
+                    // Set the camera location so we can use robotPose:
+                    .setCameraPose(cameraPosition, cameraOrientation)
 
-                .build();
+                    // Apply the custom field locations and orientations we determined with LINEAR ALGEBRA:
+                    .setTagLibrary(CustomAprilTagGameDatabase.getCurrentGameTagLibrary())
 
-        VisionPortal.Builder builder = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
-                .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
-                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .addProcessor(aprilTag);
-        visionPortal = builder.build();
+                    .build();
+
+            VisionPortal.Builder builder = new VisionPortal.Builder()
+                    .setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"))
+                    .setCameraResolution(new android.util.Size(1280, 800)) // match supported resolution
+                    .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+                    .addProcessor(aprilTag);
+            visionPortal = builder.build();
+        }
     }
 
     // Switch teams:
     public void setTeamColor(String teamColor){
         TeamColor = teamColor;
     }
-    
-    public void performSensing(double forward, double right, double rotate) {
+
+    /** Read the April tags visible in the camera, and if there is a tipped-up hive in the correct color,
+     *  calculate the proper Forward/Right/Rotate commands needed to align to it.
+     * @param forward       Gamepad command to pass-through if no detection is found
+     * @param right         Gamepad command to pass-through if no detection is found (or to strafe while aligned)
+     * @param rotate        Gamepad command to pass-through if no detection is found
+     */
+    public void performSensing(double forward, double right, double rotate){
+        performSensing(forward, right, rotate, false);
+    }
+
+    /** Read the April tags visible in the camera, and if there is a tipped-up hive in the correct color,
+     *  calculate the proper Forward/Right/Rotate commands needed to align to it.
+     * @param forward       Gamepad command to pass-through if no detection is found
+     * @param right         Gamepad command to pass-through if no detection is found (or superAlign is false)
+     * @param rotate        Gamepad command to pass-through if no detection is found
+     * @param superAlign    If true, will strafe to right in front of the hive. False will just align angle/distance.
+     */
+    public void performSensing(double forward, double right, double rotate, boolean superAlign) {
         List<AprilTagDetection> currentDetections = aprilTag.getDetections();
         //telemetry.addData("# AprilTags Detected", currentDetections.size());
         Detected = false;
@@ -111,33 +135,14 @@ public class AprilSensing {
                 // Debugging: also print hive field position
                 //telemetry.addData("Hive Pos","XYZ %s", clusterDet.metadata.fieldPosition);
                 //telemetry.addData("Hive Quat","%s", clusterDet.metadata.fieldOrientation);
-                telemetry.addData("Tag Height", "%.1f", clusterHeight(clusterDet));
+                telemetry.addData("Tag Height", "%.1f", detectionHeight(clusterDet));
 
                 // Find the hive that's the correct color, and tipped upwards (not upside down)
                 if( name.contains(TeamColor) && hiveIsTippedUp(clusterDet) ){
-                    Rotate = (Calibration.APRIL_TARGET_BEARING - detection.ftcPose.bearing)
-                            * Calibration.APRIL_YAW_GAIN_P;
-                    Forward = (Calibration.APRIL_TARGET_DISTANCE - detection.ftcPose.range)
-                            * -Calibration.APRIL_DIST_GAIN_P;
-                    telemetry.addData("Rotate/Forward", "%3.2f / %3.2f", Rotate, Forward);
-
-                    // Allow strafing, with rotation added:
-                    if( ALLOW_STRAFING_IN_ALIGNMENT ) {
-                        double rotationRadius = 30; // inches
-                        //                    double rightSpeed = right * Calibration.MAX_SPEED_INCHES_PER_S / 5; // fudge factor
-                        //                    double extraRotate = -Math.asin(rightSpeed/rotationRadius);
-                        //                    Rotate += extraRotate;
-
-                        // Use actual lateral velocity to calculate rotation rate needed:
-                        double rightSpeed = -localization.getRobotVy();
-                        double extraRadsPerSec = -Math.asin(rightSpeed / rotationRadius);
-                        Rotate += Localization.findRotateCommand(extraRadsPerSec);
-                    }
-                    else {
-                        Right = 0;
-                    }
-
                     Detected = true;
+
+                    // Apply the control loop to it! (this is a separate function now so it can be unit tested)
+                    applyAlignmentControlLoop(clusterDet, right, superAlign);
 
                     // Apply threshold to determine if we are on target enough to fire:
                     if( Math.abs(Rotate) < 0.05 && Math.abs(Forward) < 0.05 ){
@@ -159,8 +164,47 @@ public class AprilSensing {
         telemetry.addLine("RBE = Range, Bearing & Elevation");
     }   // end method telemetryAprilTag()
 
+    /** Apply alignment control loops to the detected tag cluster */
+    void applyAlignmentControlLoop(AprilTagClusterDetection clusterDet, double right, boolean superAlign)
+    {
+        // Rotation control loop:
+        Rotate = (Calibration.APRIL_TARGET_BEARING - clusterDet.ftcPose.bearing)
+                * Calibration.APRIL_BEARING_GAIN_P;
+
+        // Radial speed control loop (previously Forward only):
+        double radial = (Calibration.APRIL_TARGET_DISTANCE - clusterDet.ftcPose.range)
+                * -Calibration.APRIL_DIST_GAIN_P;
+
+        // Tangential control (either feedback loop, user input, or nothing):
+        double tangential;
+        if( superAlign ){
+            // Tangential speed control loop:
+            tangential = (Calibration.APRIL_TARGET_YAW - (clusterDet.ftcPose.yaw - clusterDet.ftcPose.bearing))
+                    * Calibration.APRIL_YAW_GAIN_P;
+        }
+        else if( ALLOW_STRAFING_IN_ALIGNMENT  ) {
+            // Allow strafing, with rotation added:
+            tangential = right;
+        }
+        else {
+            // No strafing allowed.
+            tangential = 0;
+        }
+
+        // Mix tangential and radial control loops into forward/right commands:
+        double bearing = trueBearing(clusterDet);
+        Forward = radial * Math.cos(bearing) - tangential * Math.sin(bearing);
+        Right = radial * Math.sin(bearing) - tangential * Math.cos(bearing);
+
+        // Use actual lateral velocity to calculate extra rotation rate needed to maintain target:
+        double extraRadsPerSec = angularRateAboutTag(clusterDet);
+        Rotate += Localization.findRotateCommand(extraRadsPerSec);
+
+        telemetry.addData("Forward/Right/Rotate", "%3.2f / %3.2f / %3.2f", Forward, Right, Rotate);
+    }
+
     /** Determine whether it is safe to use this April tag cluster to update field position */
-    private boolean robotPoseValid(AprilTagClusterDetection cluster){
+    boolean robotPoseValid(AprilTagClusterDetection cluster){
         // Need to make sure this hive is a good detection, the right color, tipped up, and not bogus
         Position pos = cluster.robotPose.getPosition();
         YawPitchRollAngles orx = cluster.robotPose.getOrientation();
@@ -170,16 +214,56 @@ public class AprilSensing {
                 && Math.abs(orx.getRoll()) < 5;   // Valid robot pose (robot upright)
     }
 
+    /** Calculate the robot's translational speed orthogonal to the radius to the tag (inch/sec, CCW = positive) */
+    double tangentialSpeedAboutTag(AprilTagClusterDetection det){
+        // Use built-in pose estimation which includes the camera position on robot
+        double xDiff = det.metadata.fieldPosition.get(0) - det.robotPose.getPosition().x;
+        double yDiff = det.metadata.fieldPosition.get(1) - det.robotPose.getPosition().y;
+        double xyBearing = Math.atan2(yDiff, xDiff);
+        double heading = det.robotPose.getOrientation().getYaw(AngleUnit.RADIANS) + Math.PI/2;
+        double headingDiff = xyBearing - heading;
+
+        double xVel = localization.getRobotVx();
+        double yVel = localization.getRobotVy();
+        return Math.sin(headingDiff) * xVel - Math.cos(headingDiff) * yVel;
+    }
+
+    /** Calculate angular rate of rotation around the tag cluster (in radians/sec CCW) */
+    double angularRateAboutTag(AprilTagClusterDetection det){
+        double dist = detectionXYDistance(det);
+        return (dist > 0.01) ? (tangentialSpeedAboutTag(det) / dist) : 0;
+    }
+
     /** Calculate the height of the detection based on trigonometry */
-    private double clusterHeight(AprilTagClusterDetection cluster){
-        double elevation = Math.toRadians(cluster.ftcPose.elevation + 90 - Calibration.APRIL_CAMERA_INCLINE);
-        return Math.sin(elevation) * cluster.ftcPose.range;
+    double detectionHeight(AprilTagDetection det){
+        double elevation = Math.toRadians(det.ftcPose.elevation + 90 - Calibration.APRIL_CAMERA_INCLINE);
+        return Math.sin(elevation) * det.ftcPose.range + Calibration.APRIL_CAMERA_HEIGHT;
+    }
+
+    /** Calculate the height of the detection based on trigonometry */
+    double detectionXYDistance(AprilTagClusterDetection det){
+        // Use built-in pose estimation which includes the camera position on robot
+        double xDiff = det.metadata.fieldPosition.get(0) - det.robotPose.getPosition().x;
+        double yDiff = det.metadata.fieldPosition.get(1) - det.robotPose.getPosition().y;
+        return Math.hypot(xDiff, yDiff);
+//        double elevation = Math.toRadians(det.ftcPose.elevation + 90 - Calibration.APRIL_CAMERA_INCLINE);
+//        double bearingRads = Math.toRadians(det.ftcPose.bearing);
+//        return Math.cos(elevation) * det.ftcPose.range + Calibration.APRIL_CAMERA_POS_Y;
+    }
+
+    /** Calculate the "true bearing" from robot to the detection. Includes camera position offset */
+    double trueBearing(AprilTagClusterDetection det){
+        double xDiff = det.metadata.fieldPosition.get(0) - det.robotPose.getPosition().x;
+        double yDiff = det.metadata.fieldPosition.get(1) - det.robotPose.getPosition().y;
+        double xyBearing = Math.atan2(yDiff, xDiff);
+        double heading = det.robotPose.getOrientation().getYaw(AngleUnit.RADIANS) + Math.PI/2;
+        return AngleUnit.normalizeRadians(xyBearing - heading);
     }
 
     /** Determine whether the detected hive is in the "up" position */
-    private boolean hiveIsTippedUp(AprilTagClusterDetection cluster){
-        return Math.abs(cluster.ftcPose.roll) < 90  // Not reading hive from wrong side
-//                && cluster.ftcPose.pitch < 20;      // Tipped sufficiently upward // TODO: Find a better way to calculate this
-            && clusterHeight(cluster) >= Calibration.APRIL_HIVE_MIN_HEIGHT;
+    boolean hiveIsTippedUp(AprilTagDetection det){
+        return Math.abs(det.ftcPose.roll) < 90  // Not reading hive from wrong side
+//                && det.ftcPose.pitch < 20;      // Tipped sufficiently upward // TODO: Find a better way to calculate this
+            && detectionHeight(det) >= Calibration.APRIL_HIVE_MIN_HEIGHT;
     }
 }

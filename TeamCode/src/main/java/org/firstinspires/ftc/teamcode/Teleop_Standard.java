@@ -290,17 +290,21 @@ public class Teleop_Standard extends OpMode {
             // When winch is launching, DO NOT MOVE THE ROBOT!
             drive(0, 0, 0);
         }
-        else if (gamepad1.left_bumper) {
-            // Left bumper is now APRIL tag AUTO AIMBOT MODE.
-            // Pressing BOTH BUMPERS will actually align. Left only will just display on telemetry
-            AlineToAprilTag( !gamepad1.right_bumper, forward, right, rotate );
-        } 
         else if (gamepad1.right_bumper) {
-            // Right bumper enables wall following strafe mode
-            strafeAlongWall(right);
-        } 
+            // Right bumper is now April tag AUTO AIMBOT MODE.
+            // If the Left bumper is also pressed, it enables SUPER AIMBOT which also strafes to directly in front.
+            aprilSensing.performSensing( forward, right, rotate, gamepad1.left_bumper );
+            LEDColor = colorForAprilAlignment();
+
+            drive( aprilSensing.Forward, aprilSensing.Right, aprilSensing.Rotate );
+        }
         else {
-            // No bumpers being pressed. Apply gamepad inputs commands:
+            if (gamepad1.left_bumper) {
+                // Left bumper is now April tag DISPLAY ONLY mode.
+                aprilSensing.performSensing(forward, right, rotate);
+                LEDColor = colorForAprilAlignment();
+            }
+            // Apply gamepad inputs commands:
             drive(forward, right, rotate);
         }
 
@@ -510,19 +514,20 @@ public class Teleop_Standard extends OpMode {
                     aprilSensing.Right,
                     aprilSensing.Rotate);
         }
-
-        // Turn on LED:
-        if( aprilSensing.OnTarget ){
-            LEDColor = Calibration.LED_READY_TO_FIRE;
-        }
-        else if( aprilSensing.Detected ){
-            LEDColor = Calibration.LED_AIMING;
-        }
-        else {
-            LEDColor = teamLEDColor();
-        }
     }
 
+    /** Set the LED color based on success/failure of most recent April tag detection/alignment */
+    double colorForAprilAlignment(){
+        if( aprilSensing.OnTarget ){
+            return Calibration.LED_READY_TO_FIRE;
+        }
+        else if( aprilSensing.Detected ){
+            return Calibration.LED_AIMING;
+        }
+        else {
+            return teamLEDColor();
+        }
+    }
 
     /**
      * Checks if a gamepad is connected based on its ID.

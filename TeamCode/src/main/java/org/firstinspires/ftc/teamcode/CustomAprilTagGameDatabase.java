@@ -48,7 +48,8 @@ public class CustomAprilTagGameDatabase extends AprilTagGameDatabase
     public static final double FIELD_CENTER_Y   = 72;
     public static final double FIELD_CENTER_X   = 72;
     public static final double TAG_HEIGHT       = 49.654; // Height of tag cluster center from floor
-    public static final double CLUSTER_Y_OFFSET = 25.5/2; // Y distance from cluster center to driver wall
+    public static final double CLUSTER_Y_OFFSET = 25.5/2; // Y distance from cluster center to field center
+    public static final double CLUSTER_Y        = FIELD_CENTER_Y - CLUSTER_Y_OFFSET; // Y distance from cluster center to driver wall
     public static final double CLUSTER_X_OFFSET = 12.876; // X distance from cluster center to field center
     public static final double TAG_INCLINE      = 28.5;     // Degrees above horizontal
 
@@ -113,7 +114,7 @@ public class CustomAprilTagGameDatabase extends AprilTagGameDatabase
         // XYZ coordinates are based on alliance side, with origin at left end of driver's wall.
         float rightSideX = (float) (FIELD_CENTER_X + CLUSTER_X_OFFSET);
         float leftSideX  = (float) (FIELD_CENTER_X - CLUSTER_X_OFFSET);
-        float y = (float) (FIELD_CENTER_Y - CLUSTER_Y_OFFSET);
+        float y = (float) CLUSTER_Y;
         float z = (float) TAG_HEIGHT;
         VectorF leftLocation  = new VectorF(leftSideX,  y, z);
         VectorF rightLocation = new VectorF(rightSideX, y, z);
